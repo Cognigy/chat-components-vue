@@ -87,7 +87,7 @@ const matchedComponents = computed(() => {
 
   // Map matched plugin names to actual Vue components
   return matched
-    .map(plugin => componentMap[plugin.name])
+    .map(plugin => plugin.name ? componentMap[plugin.name] : null)
     .filter(Boolean)
 })
 

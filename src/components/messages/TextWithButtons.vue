@@ -12,7 +12,7 @@
     <!-- Buttons -->
     <ActionButtons
       v-if="buttons.length > 0"
-      :payload="buttons"
+      :payload="buttons as any"
       :action="modifiedAction"
       :buttonClassName="buttonClassName"
       :containerClassName="containerClassName"

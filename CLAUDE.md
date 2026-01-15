@@ -499,6 +499,8 @@ When writing or modifying code in this repository, follow these principles:
 2. **Performance** - Optimize for runtime performance, avoid unnecessary reactivity triggers
 3. **Readability** - Code should be self-documenting; clarity over cleverness
 4. **Simplicity** - Keep implementations straightforward and reliable
+5. **DRY (Don't Repeat Yourself)** - Eliminate duplication in production code
+   - **Exception: Tests are exempt from DRY** - Tests should be isolated and self-contained, even if repetitive
 
 ### Ranch vs. Skyscraper Code
 
@@ -770,12 +772,105 @@ describe('Component', () => {
 })
 ```
 
+### DRY Principle (Don't Repeat Yourself)
+
+**Keep production code DRY, but allow tests to be repetitive.**
+
+#### In Production Code: Eliminate Duplication
+
+```typescript
+// ❌ Bad: Repeated validation logic
+function createUser(data) {
+  if (!data.email?.includes('@')) throw new Error('Invalid email')
+  // create user...
+}
+
+function updateUser(id, data) {
+  if (!data.email?.includes('@')) throw new Error('Invalid email')
+  // update user...
+}
+
+// ✅ Good: Extracted common validation
+function validateEmail(email) {
+  if (!email?.includes('@')) throw new Error('Invalid email')
+}
+
+function createUser(data) {
+  validateEmail(data.email)
+  // create user...
+}
+
+function updateUser(id, data) {
+  validateEmail(data.email)
+  // update user...
+}
+```
+
+#### In Tests: Repetition is OK for Clarity
+
+**Tests are exempt from DRY.** Each test should be isolated and self-contained:
+
+```typescript
+// ✅ Good: Repetitive but clear - each test is self-contained
+describe('validateEmail', () => {
+  it('rejects email without @', () => {
+    expect(() => validateEmail('notanemail')).toThrow('Invalid email')
+  })
+
+  it('rejects empty email', () => {
+    expect(() => validateEmail('')).toThrow('Invalid email')
+  })
+
+  it('accepts valid email', () => {
+    expect(() => validateEmail('user@test.com')).not.toThrow()
+  })
+})
+
+// ❌ Bad: Over-DRY tests are harder to understand
+describe('validateEmail', () => {
+  const cases = [
+    { input: 'notanemail', shouldThrow: true },
+    { input: '', shouldThrow: true },
+    { input: 'user@test.com', shouldThrow: false }
+  ]
+
+  cases.forEach(({ input, shouldThrow }) => {
+    it(`handles ${input}`, () => {
+      const fn = () => validateEmail(input)
+      shouldThrow ? expect(fn).toThrow() : expect(fn).not.toThrow()
+    })
+  })
+})
+```
+
+**Why repetitive tests are better:**
+- Each test is immediately readable
+- Stack traces point to exact test
+- Easy to run or skip individual tests
+- Changes to one test don't affect others
+
+**Test helpers are OK for complex setup:**
+```typescript
+// ✅ Good: Helper for complex object creation
+function createTestMessage(overrides = {}) {
+  return {
+    text: 'Test',
+    source: 'bot' as const,
+    timestamp: '123',
+    data: {},
+    ...overrides
+  }
+}
+```
+
 ### Code Review Checklist
 
 Before submitting code, verify:
 
 - ✅ Code is easy to read and understand
 - ✅ No unnecessary complexity or cleverness
+- ✅ No code duplication in production code (DRY)
+- ✅ Tests are self-contained (repetition OK)
 - ✅ Error cases are handled explicitly
 - ✅ Errors are logged with sufficient context
 - ✅ Null/undefined checks at boundaries

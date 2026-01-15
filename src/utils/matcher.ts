@@ -7,7 +7,7 @@
  */
 
 import type { IMessage } from '@cognigy/socket-client'
-import type { ChatConfig, MessagePlugin } from '@/types'
+import type { ChatConfig, MessagePlugin } from '../types'
 
 // Message type components will be imported here as they're created
 // For now, we'll use component references

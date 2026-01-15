@@ -31,6 +31,9 @@ export interface ChatSettings {
     enableGenericHTMLStyling?: boolean
     disableBotOutputBorder?: boolean
     botOutputMaxWidthPercentage?: number
+    disableUrlButtonSanitization?: boolean
+    dynamicImageAspectRatio?: boolean
+    showEngagementInChat?: boolean
   }
   colors?: {
     primaryColor?: string
@@ -44,12 +47,44 @@ export interface ChatSettings {
     enableTypingIndicator?: boolean
     messageDelay?: number
     collateStreamedOutputs?: boolean
+    focusInputAfterPostback?: boolean
   }
   widgetSettings?: {
     enableDefaultPreview?: boolean
     enableStrictMessengerSync?: boolean
     customAllowedHtmlTags?: string[]
     enableAutoFocus?: boolean
+    disableRenderURLsAsLinks?: boolean
+    disableTextInputSanitization?: boolean
+    sourceDirectionMapping?: {
+      user?: 'incoming' | 'outgoing'
+      bot?: 'incoming' | 'outgoing'
+      agent?: 'incoming' | 'outgoing'
+    }
+  }
+  customTranslations?: {
+    ariaLabels?: {
+      messageHeader?: {
+        user?: string
+        bot?: string
+        timestamp?: string
+      }
+      opensInNewTab?: string
+      actionButtonPositionText?: string
+      viewImageInFullsize?: string
+      fullSizeImageViewerTitle?: string
+      downloadFullsizeImage?: string
+      closeFullsizeImageModal?: string
+      playAudio?: string
+      pauseAudio?: string
+      audioPlaybackProgress?: string
+      audioTimeRemaining?: string
+      downloadTranscript?: string
+      playVideo?: string
+      slide?: string
+      [key: string]: any
+    }
+    [key: string]: any
   }
 }
 

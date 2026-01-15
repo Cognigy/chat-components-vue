@@ -52,7 +52,7 @@ import ActionButtons from '../common/ActionButtons.vue'
 import { useMessageContext } from '../../composables/useMessageContext'
 import { getChannelPayload } from '../../utils/matcher'
 import { getRandomId } from '../../utils/helpers'
-import type { IWebchatTemplateAttachment, IWebchatAttachmentElement } from '../../types'
+import type { IWebchatTemplateAttachment } from '../../types'
 
 const $style = useCssModule()
 
