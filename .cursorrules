@@ -14,7 +14,36 @@ Vue 3 implementation of @cognigy/chat-components library for rendering chat mess
 
 ## Critical Rules
 
-### 1. NEVER Destructure Props
+### 1. NEVER Use `as any`
+
+**`as any` is an antipattern.** It bypasses TypeScript's type safety and should be avoided and corrected.
+
+```typescript
+// WRONG - bypasses type checking
+const data = response.data as any
+const id = (message as any).id
+
+// CORRECT - use proper types
+interface ApiResponse { user: { name: string } }
+const data = response.data as ApiResponse
+
+// CORRECT - use type guards
+function hasId(msg: unknown): msg is { id: string } {
+  return typeof msg === 'object' && msg !== null && 'id' in msg
+}
+if (hasId(message)) {
+  const id = message.id  // Type-safe!
+}
+
+// CORRECT - extend incomplete external types
+interface IMessageWithId extends IMessage {
+  id?: string
+}
+```
+
+**When you find `as any`:** Create proper interfaces, add type guards, or document upstream type issues.
+
+### 2. NEVER Destructure Props
 
 ```typescript
 // CORRECT
@@ -25,7 +54,7 @@ const value = computed(() => props.value)
 const { value } = defineProps<Props>()
 ```
 
-### 2. ALWAYS Import CSS Module in Script
+### 3. ALWAYS Import CSS Module in Script
 
 ```vue
 <script setup lang="ts">
@@ -38,14 +67,14 @@ const $style = useCssModule()  // Required!
 </style>
 ```
 
-### 3. Use MessageContext for Shared State
+### 4. Use MessageContext for Shared State
 
 ```typescript
 import { useMessageContext } from '../../composables/useMessageContext'
 const { message, config, action, onEmitAnalytics } = useMessageContext()
 ```
 
-### 4. Test Context Key Must Be Cast as Symbol
+### 5. Test Context Key Must Be Cast as Symbol
 
 ```typescript
 provide: {
@@ -195,6 +224,7 @@ npm run type-check   # Type check
 
 ## Checklist Before Completion
 
+- [ ] **No `as any`** - use proper types or type guards
 - [ ] Props not destructured
 - [ ] CSS modules imported with `useCssModule()`
 - [ ] Error cases handled with logging

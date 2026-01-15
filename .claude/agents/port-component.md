@@ -1115,6 +1115,7 @@ Use this checklist before marking component complete:
 - [ ] Uses existing composables
 - [ ] Code is readable and maintainable
 - [ ] No code duplication in production code (DRY)
+- [ ] **No `as any` type assertions** (use proper types or type guards)
 - [ ] Tests are self-contained (repetition OK for clarity)
 - [ ] Comments where needed
 - [ ] TypeScript strict mode compliance

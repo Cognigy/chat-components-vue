@@ -694,6 +694,124 @@ const props = withDefaults(defineProps<Props>(), {
 })
 ```
 
+### Avoiding `as any` (Antipattern)
+
+**`as any` is an antipattern that bypasses TypeScript's type safety.** It should be avoided and corrected when found.
+
+#### Why `as any` is Problematic
+
+1. **Disables type checking** - Errors that TypeScript would catch are silently ignored
+2. **Spreads through codebase** - Once you have `any`, it infects other types
+3. **Hides design issues** - Often indicates missing interfaces or improper types
+4. **Makes refactoring dangerous** - No compiler help when changing code
+
+#### How to Fix `as any`
+
+**1. Create proper interfaces:**
+```typescript
+// ❌ Bad
+const data = response.data as any
+const name = data.user.name
+
+// ✅ Good
+interface ApiResponse {
+  user: {
+    name: string
+    email: string
+  }
+}
+const data = response.data as ApiResponse
+const name = data.user.name
+```
+
+**2. Use type guards:**
+```typescript
+// ❌ Bad
+function process(input: unknown) {
+  return (input as any).value
+}
+
+// ✅ Good
+interface HasValue {
+  value: string
+}
+
+function hasValue(input: unknown): input is HasValue {
+  return typeof input === 'object' && input !== null && 'value' in input
+}
+
+function process(input: unknown) {
+  if (hasValue(input)) {
+    return input.value  // Type-safe!
+  }
+  return null
+}
+```
+
+**3. Use `unknown` with narrowing:**
+```typescript
+// ❌ Bad
+function handleEvent(event: any) {
+  console.log(event.target.value)
+}
+
+// ✅ Good
+function handleEvent(event: unknown) {
+  if (event && typeof event === 'object' && 'target' in event) {
+    const target = event.target
+    if (target && typeof target === 'object' && 'value' in target) {
+      console.log(target.value)
+    }
+  }
+}
+```
+
+**4. Extend incomplete external types:**
+```typescript
+// When external library types are incomplete
+// ❌ Bad
+const id = (message as any).id
+
+// ✅ Good
+interface IMessageWithId extends IMessage {
+  id?: string
+}
+
+function getMessageId(message: IMessage): string {
+  if ('id' in message && typeof (message as IMessageWithId).id === 'string') {
+    return (message as IMessageWithId).id!
+  }
+  return `message-${message.timestamp}`
+}
+```
+
+#### Acceptable Uses of Type Assertions
+
+Type assertions (`as Type`) are different from `as any` and are acceptable when:
+- You have more information than TypeScript can infer
+- You're narrowing from a broader type to a specific one
+- The assertion is to a **specific type**, not `any`
+
+```typescript
+// ✅ Acceptable: Specific type assertion with validation
+const element = document.getElementById('app') as HTMLDivElement
+
+// ✅ Acceptable: Narrowing after type guard
+if (isAdaptiveCardPayload(payload)) {
+  const card = payload.adaptiveCard as AdaptiveCardData
+}
+
+// ❌ Not acceptable: Bypassing type system
+const data = response as any
+```
+
+#### When You Find `as any`
+
+1. **Investigate why** it was added - often reveals a missing type
+2. **Create proper types** for the data structure
+3. **Add type guards** for runtime validation
+4. **Document upstream issues** if external types are incomplete
+
 ### Performance
 
 ```vue
@@ -875,6 +993,7 @@ Before submitting code, verify:
 - ✅ Errors are logged with sufficient context
 - ✅ Null/undefined checks at boundaries
 - ✅ TypeScript types are accurate and helpful
+- ✅ **No `as any` type assertions** (use proper types or type guards)
 - ✅ Performance-sensitive paths are optimized
 - ✅ Tests cover happy path and error cases
 - ✅ No silent failures or swallowed errors

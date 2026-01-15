@@ -353,6 +353,7 @@ Before submitting code, verify:
 
 ### Quality
 - ✅ No duplicated code
+- ✅ **No `as any` type assertions** (use proper types or type guards)
 - ✅ Functions are focused (do one thing well)
 - ✅ No magic numbers or strings (use constants)
 - ✅ Performance-sensitive paths are optimized
@@ -627,7 +628,53 @@ describe('updateUser', () => {
 
 ## Anti-Patterns to Avoid
 
-### 1. Premature Abstraction
+### 1. Using `as any` in TypeScript
+
+**`as any` is a critical antipattern** that bypasses TypeScript's type safety. It should be avoided and corrected when found.
+
+```typescript
+// ❌ Bad: Bypasses type checking entirely
+const data = response.data as any
+const name = data.user.name  // No type checking!
+
+// ✅ Good: Create proper interfaces
+interface ApiResponse {
+  user: { name: string; email: string }
+}
+const data = response.data as ApiResponse
+const name = data.user.name  // Type-checked!
+
+// ❌ Bad: Accessing unknown properties
+const id = (message as any).id
+
+// ✅ Good: Use type guards
+function hasId(obj: unknown): obj is { id: string } {
+  return typeof obj === 'object' && obj !== null && 'id' in obj
+}
+if (hasId(message)) {
+  const id = message.id  // Type-safe!
+}
+
+// ✅ Good: Extend incomplete external types
+interface IMessageWithId extends IMessage {
+  id?: string
+}
+```
+
+**Why `as any` is problematic:**
+- Disables type checking - errors are silently ignored
+- Spreads through codebase - `any` infects other types
+- Hides design issues - often indicates missing interfaces
+- Makes refactoring dangerous - no compiler help
+
+**When you find `as any`:**
+1. Investigate why it was added
+2. Create proper interfaces for the data structure
+3. Add type guards for runtime validation
+4. Extend incomplete external types if needed
+5. Document upstream type issues if unavoidable
+
+### 2. Premature Abstraction
 ```javascript
 // ❌ Bad: Abstraction for one use case
 class StringUtils {
@@ -640,7 +687,7 @@ class StringUtils {
 const lower = string.toLowerCase()
 ```
 
-### 2. God Functions
+### 3. God Functions
 ```javascript
 // ❌ Bad: Does too many things
 function handleUserAction(action, user, data) {
@@ -676,7 +723,7 @@ function handleUserAction(action, user, data) {
 }
 ```
 
-### 3. Callback Hell / Deep Nesting
+### 4. Callback Hell / Deep Nesting
 ```javascript
 // ❌ Bad: Deep nesting
 getData((data) => {
@@ -698,7 +745,7 @@ async function processAndSave() {
 }
 ```
 
-### 4. Magic Values
+### 5. Magic Values
 ```javascript
 // ❌ Bad: Magic numbers and strings
 if (user.status === 2) {

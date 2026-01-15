@@ -166,6 +166,37 @@ function processMessage(message: IMessage) {
 - Use strict types with clear interfaces
 - Validate at boundaries
 - Explicit props with defaults via `withDefaults`
+- **NEVER use `as any`** - it's an antipattern that bypasses type safety
+
+### Avoiding `as any` (Antipattern)
+
+`as any` should be avoided and corrected when found:
+
+```typescript
+// WRONG - bypasses type checking
+const data = response.data as any
+const id = (message as any).id
+
+// CORRECT - use proper interfaces
+interface ApiResponse { user: { name: string } }
+const data = response.data as ApiResponse
+
+// CORRECT - use type guards for unknown data
+function hasId(msg: unknown): msg is { id: string } {
+  return typeof msg === 'object' && msg !== null && 'id' in msg
+}
+
+// CORRECT - extend incomplete external types
+interface IMessageWithId extends IMessage {
+  id?: string
+}
+```
+
+**When you find `as any`:**
+1. Create proper interfaces for the data structure
+2. Add type guards for runtime validation
+3. Extend incomplete external types
+4. Document upstream type limitations if unavoidable
 
 ### Testing
 
@@ -209,6 +240,7 @@ describe('Component', () => {
 - Code is easy to read and understand
 - No unnecessary complexity or cleverness
 - No code duplication in production code
+- **No `as any` type assertions** (use proper types or type guards)
 - Error cases handled explicitly with logging
 - Null/undefined checks at boundaries
 - TypeScript types are accurate

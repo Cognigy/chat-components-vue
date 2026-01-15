@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
 import AudioMessage from '../src/components/messages/AudioMessage.vue'
 import { MessageContextKey } from '../src/composables/useMessageContext'
