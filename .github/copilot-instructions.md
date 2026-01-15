@@ -146,7 +146,7 @@ function processMessage(message: IMessage) {
 
   if (!text) {
     console.warn('processMessage: no text found in message', {
-      messageId: (message as any).id,
+      messageId: message.traceId,  // Use traceId from IMessage
       source: message.source
     })
     return null

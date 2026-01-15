@@ -58,7 +58,7 @@ const $style = useCssModule()
 
 // Message context
 const { message, config, action, onEmitAnalytics } = useMessageContext()
-const dataMessageId = (window as any).__TEST_MESSAGE_ID__ // For testing
+const dataMessageId = window.__TEST_MESSAGE_ID__ // For testing
 
 // Get list data from message payload
 const payload = computed(() => getChannelPayload(message, config))

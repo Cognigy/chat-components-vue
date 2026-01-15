@@ -6,6 +6,67 @@
 import type { IMessage } from '@cognigy/socket-client'
 import type { Component } from 'vue'
 
+// =============================================================================
+// Extended Socket Client Types
+// =============================================================================
+
+/**
+ * Extended IMessage with optional runtime properties not in base interface.
+ * The socket-client IMessage doesn't include 'id', but it may be present at runtime.
+ */
+export interface IMessageWithId extends IMessage {
+  id?: string
+}
+
+/**
+ * Type guard to check if a message has an id property
+ */
+export function hasMessageId(message: IMessage): message is IMessageWithId & { id: string } {
+  return 'id' in message && typeof (message as IMessageWithId).id === 'string'
+}
+
+/**
+ * Get message ID with fallback to timestamp-based ID
+ */
+export function getMessageId(message: IMessage): string {
+  if (hasMessageId(message)) {
+    return message.id
+  }
+  return `message-${message.timestamp ?? Date.now()}`
+}
+
+/**
+ * Adaptive card payload structure.
+ * Used for type narrowing when accessing adaptive card data from message payloads.
+ */
+export interface IAdaptiveCardPayload {
+  adaptiveCard: unknown
+}
+
+/**
+ * Type guard to check if a payload contains an adaptive card
+ */
+export function isAdaptiveCardPayload(
+  payload: unknown
+): payload is IAdaptiveCardPayload {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'adaptiveCard' in payload
+  )
+}
+
+// =============================================================================
+// Window Interface Extension (for testing)
+// =============================================================================
+
+declare global {
+  interface Window {
+    /** Test-only: Message ID for component testing */
+    __TEST_MESSAGE_ID__?: string
+  }
+}
+
 /**
  * Configuration for the chat components
  * Mirrors IWebchatConfig from React version
@@ -131,20 +192,64 @@ export interface MessageProps {
 }
 
 /**
- * Message plugin for custom message types
+ * Options for match rules and plugins
  */
-export interface MessagePlugin {
-  name?: string
-  match: (message: IMessage, config?: ChatConfig) => boolean
-  component: Component
-  options?: MessagePluginOptions
-}
-
-export interface MessagePluginOptions {
+export interface MatchRuleOptions {
+  /** If true, continue matching after this rule (allows multiple components) */
   passthrough?: boolean
+  /** Render component in fullscreen mode */
   fullscreen?: boolean
+  /** Render component at full width */
   fullwidth?: boolean
 }
+
+/**
+ * Internal match rule used by the matcher system.
+ * These define which message types map to which internal components.
+ * Components are resolved by name lookup in Message.vue.
+ */
+export interface MatchRule {
+  /** Unique name identifying this rule (maps to component in Message.vue) */
+  name: string
+  /** Function to determine if this rule matches a message */
+  match: (message: IMessage, config?: ChatConfig) => boolean
+  /** Optional rule behavior settings */
+  options?: MatchRuleOptions
+}
+
+/**
+ * External message plugin for custom message types.
+ * Users provide these to handle custom message formats.
+ */
+export interface MessagePlugin extends MatchRule {
+  /** Vue component to render for matched messages (required for external plugins) */
+  component: Component
+}
+
+/**
+ * Union type for matcher results - can be internal rule or external plugin
+ */
+export type MatchResult = MatchRule | MessagePlugin
+
+/**
+ * Type guard to check if a match result is an external plugin with a component
+ */
+export function isMessagePlugin(rule: MatchResult): rule is MessagePlugin {
+  return 'component' in rule && isValidComponent(rule.component)
+}
+
+/**
+ * Check if a value is a valid Vue component (not null/undefined/empty)
+ */
+export function isValidComponent(component: unknown): component is Component {
+  if (!component) return false
+  if (typeof component === 'function') return true
+  if (typeof component === 'object' && Object.keys(component).length > 0) return true
+  return false
+}
+
+/** @deprecated Use MatchRuleOptions instead */
+export type MessagePluginOptions = MatchRuleOptions
 
 /**
  * Context provided to message components

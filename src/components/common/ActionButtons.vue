@@ -4,12 +4,8 @@ import ActionButton from './ActionButton.vue'
 import { getRandomId } from '../../utils/helpers'
 import type { IWebchatButton, IWebchatQuickReply, ChatConfig, MessageSender } from '../../types'
 
-type ButtonPayloadCompatibility = {
-  contentType?: string
-}
-
 interface Props {
-  payload: IWebchatButton[] | Array<IWebchatQuickReply & ButtonPayloadCompatibility>
+  payload: (IWebchatButton | IWebchatQuickReply)[]
   action?: MessageSender
   className?: string
   containerClassName?: string
