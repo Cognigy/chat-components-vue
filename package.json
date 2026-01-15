@@ -1,0 +1,60 @@
+{
+  "name": "@cognigy/chat-components-vue",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Vue 3 version of @cognigy/chat-components",
+  "main": "./dist/chat-components-vue.js",
+  "module": "./dist/chat-components-vue.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/chat-components-vue.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/**",
+    "src/**"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "lint": "eslint . --ext .vue,.ts,.tsx --report-unused-disable-directives"
+  },
+  "peerDependencies": {
+    "vue": "^3.4.0"
+  },
+  "dependencies": {
+    "@braintree/sanitize-url": "^7.1.1",
+    "@cognigy/socket-client": "5.0.0-beta.20",
+    "@fontsource/figtree": "5.2.10",
+    "dompurify": "^3.0.11",
+    "flatpickr": "^4.6.13",
+    "markdown-it": "^14.1.0",
+    "marked": "^12.0.0",
+    "moment": "^2.30.1",
+    "swiper": "^12.0.3"
+  },
+  "devDependencies": {
+    "@types/dompurify": "^3.0.5",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "@vue/test-utils": "^2.4.0",
+    "@vue/tsconfig": "^0.5.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-vue": "^9.20.0",
+    "jsdom": "^27.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^5.4.0",
+    "vite-plugin-dts": "^4.2.0",
+    "vitest": "^2.1.0",
+    "vue": "^3.5.0",
+    "vue-tsc": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=22.1.0"
+  }
+}

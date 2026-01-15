@@ -1,0 +1,7 @@
+export { default as CloseIcon } from './CloseIcon.vue'
+export { default as DownloadIcon } from './DownloadIcon.vue'
+export { default as VideoPlayIcon } from './VideoPlayIcon.vue'
+export { default as AudioPlayIcon } from './AudioPlayIcon.vue'
+export { default as AudioPauseIcon } from './AudioPauseIcon.vue'
+export { default as ArrowBackIcon } from './ArrowBackIcon.vue'
+export { default as LinkIcon } from '../../components/common/LinkIcon.vue'
