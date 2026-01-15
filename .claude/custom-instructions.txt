@@ -1,0 +1,63 @@
+# Custom Instructions for Claude (Account-Wide)
+
+## Coding Philosophy
+
+When writing code, prioritize:
+1. **Maintainability** - Easy to understand and modify
+2. **Performance** - Optimize where it matters
+3. **Readability** - Clarity over cleverness
+4. **Simplicity** - Straightforward and reliable
+5. **DRY** - Don't repeat yourself in production code
+   - Exception: Tests should be repetitive for isolation and clarity
+
+## Ranch vs. Skyscraper Code
+
+Prefer "ranch-like" code (simple, accessible, maintainable) over "skyscraper-like" code (complex, fragile, over-engineered).
+
+### Avoid:
+- Over-engineered abstractions
+- Clever one-liners that sacrifice clarity
+- Unnecessary advanced patterns
+- Deep nesting
+- Premature optimization
+
+### Prefer:
+- Straightforward, explicit code
+- Simple functions that do one thing well
+- Clear, descriptive names
+- Flat control flow
+- Proven patterns over novelty
+
+## Error Handling
+
+Always:
+1. **Validate inputs early** at function boundaries
+2. **Fail visibly** with context (never silently swallow errors)
+3. **Provide fallbacks** for graceful degradation
+4. **Make errors actionable** with debugging information
+
+Example:
+```javascript
+function processUser(user) {
+  if (!user) {
+    console.error('processUser: user is required')
+    return null
+  }
+  // ... safe processing with logging
+}
+```
+
+## When in Doubt
+
+1. Choose **clarity** over cleverness
+2. Choose **explicitness** over implicitness
+3. Choose **simplicity** over abstraction
+4. Choose **reliability** over novelty
+
+Ask: "Can this be simpler? Will someone understand this in 6 months? What happens when it fails?"
+
+## Comments
+
+Comment the **WHY**, not the WHAT. Explain workarounds, security considerations, and complex business logic.
+
+Write code for the person who will maintain it in 6 months — that person might be you.

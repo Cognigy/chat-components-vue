@@ -58,24 +58,84 @@ import { computed } from 'vue'
 import ChatBubble from '../common/ChatBubble.vue'
 import Typography from '../common/Typography.vue'
 import { useMessageContext } from '../../composables/useMessageContext'
+import { isAdaptiveCardPayload } from '../../types'
+
+/**
+ * Simplified adaptive card structure for our rendering needs.
+ * The full IAdaptiveCard type from 'adaptivecards' package is complex,
+ * but we only need a subset for display purposes.
+ */
+interface AdaptiveCardData {
+  title?: string
+  body?: unknown[]
+  actions?: unknown[]
+  speak?: string
+}
+
+/**
+ * Adaptive card sources from different payload locations
+ */
+interface AdaptiveCardSources {
+  webchat: AdaptiveCardData | undefined
+  defaultPreview: AdaptiveCardData | undefined
+  plugin: AdaptiveCardData | undefined
+}
+
+/**
+ * Extract adaptive card from various message payload locations.
+ *
+ * Note on types: The socket-client types have limitations:
+ * - _defaultPreview is typed as `any`
+ * - _plugin.data is `any` for adaptivecards type
+ * We use runtime type guards to safely access these properties.
+ */
+function getAdaptiveCardSources(message: ReturnType<typeof useMessageContext>['message']): AdaptiveCardSources {
+  const cognigyData = message?.data?._cognigy
+  const pluginData = message?.data?._plugin
+
+  // _webchat can be IWebchatMessage | IAdaptiveCardMessage - use type guard
+  const webchatPayload = cognigyData?._webchat
+  const webchat = isAdaptiveCardPayload(webchatPayload)
+    ? (webchatPayload.adaptiveCard as AdaptiveCardData)
+    : undefined
+
+  // _defaultPreview is typed as `any` in socket-client (upstream limitation)
+  // We safely check for adaptiveCard property
+  const defaultPreviewPayload = cognigyData?._defaultPreview
+  const defaultPreview = isAdaptiveCardPayload(defaultPreviewPayload)
+    ? (defaultPreviewPayload.adaptiveCard as AdaptiveCardData)
+    : undefined
+
+  // Plugin data can come in two formats:
+  // 1. Typed format: { type: 'adaptivecards', data: cardData }
+  // 2. Legacy format: { payload: cardData }
+  let plugin: AdaptiveCardData | undefined
+  if (pluginData) {
+    if (pluginData.type === 'adaptivecards' && 'data' in pluginData) {
+      plugin = pluginData.data as AdaptiveCardData
+    } else if ('payload' in pluginData) {
+      plugin = (pluginData as { payload?: unknown }).payload as AdaptiveCardData
+    }
+  }
+
+  return { webchat, defaultPreview, plugin }
+}
 
 // Message context
 const { message, config } = useMessageContext()
 
+// Get all adaptive card sources
+const cardSources = computed(() => getAdaptiveCardSources(message))
+
 // Check if this message has an adaptive card
 const hasAdaptiveCard = computed(() => {
-  const webchat = (message?.data?._cognigy?._webchat as any)?.adaptiveCard
-  const defaultPreview = (message?.data?._cognigy?._defaultPreview as any)?.adaptiveCard
-  const plugin = (message?.data?._plugin as any)?.payload
-
+  const { webchat, defaultPreview, plugin } = cardSources.value
   return !!(webchat || defaultPreview || plugin)
 })
 
-// Get card payload
-const cardPayload = computed(() => {
-  const webchat = (message?.data?._cognigy?._webchat as any)?.adaptiveCard
-  const defaultPreview = (message?.data?._cognigy?._defaultPreview as any)?.adaptiveCard
-  const plugin = (message?.data?._plugin as any)?.payload
+// Get card payload based on configuration
+const cardPayload = computed((): AdaptiveCardData | undefined => {
+  const { webchat, defaultPreview, plugin } = cardSources.value
   const defaultPreviewEnabled = config?.settings?.widgetSettings?.enableDefaultPreview
 
   if (webchat && defaultPreview && !defaultPreviewEnabled) {
@@ -87,34 +147,59 @@ const cardPayload = computed(() => {
   return plugin || webchat
 })
 
+/**
+ * Adaptive card body element (simplified type for our use case)
+ */
+interface AdaptiveCardElement {
+  type: string
+  text?: string
+  size?: string
+}
+
+/**
+ * Check if an item is a TextBlock element
+ */
+function isTextBlock(item: unknown): item is AdaptiveCardElement & { type: 'TextBlock'; text: string } {
+  return (
+    typeof item === 'object' &&
+    item !== null &&
+    (item as AdaptiveCardElement).type === 'TextBlock' &&
+    typeof (item as AdaptiveCardElement).text === 'string'
+  )
+}
+
 // Extract card title
 const cardTitle = computed(() => {
-  if (!cardPayload.value) return 'Adaptive Card'
+  const card = cardPayload.value
+  if (!card) return 'Adaptive Card'
 
-  // Try to get title from various locations
-  if (cardPayload.value.title) {
-    return cardPayload.value.title
+  // Try to get title from card property (custom extension)
+  if ('title' in card && typeof card.title === 'string') {
+    return card.title
   }
 
   // Try to get from body elements
-  if (cardPayload.value.body && Array.isArray(cardPayload.value.body)) {
-    const titleElement = cardPayload.value.body.find(
-      (item: any) => item.type === 'TextBlock' && item.size === 'large'
+  const body = card.body
+  if (body && Array.isArray(body)) {
+    // Look for large text block (likely a title)
+    const titleElement = body.find(
+      (item): item is AdaptiveCardElement =>
+        isTextBlock(item) && item.size === 'large'
     )
     if (titleElement?.text) {
       return titleElement.text
     }
 
     // Fallback to first TextBlock
-    const firstText = cardPayload.value.body.find((item: any) => item.type === 'TextBlock')
+    const firstText = body.find(isTextBlock)
     if (firstText?.text) {
       return firstText.text
     }
   }
 
   // Fallback to speak text or generic title
-  if (cardPayload.value.speak) {
-    return cardPayload.value.speak.substring(0, 50)
+  if (card.speak) {
+    return card.speak.substring(0, 50)
   }
 
   return 'Adaptive Card'
@@ -122,14 +207,18 @@ const cardTitle = computed(() => {
 
 // Extract card body text
 const cardBody = computed(() => {
-  if (!cardPayload.value?.body || !Array.isArray(cardPayload.value.body)) {
+  const body = cardPayload.value?.body
+  if (!body || !Array.isArray(body)) {
     return null
   }
 
   // Get text from body elements (skip the title)
-  const bodyTexts = cardPayload.value.body
-    .filter((item: any) => item.type === 'TextBlock' && item.text !== cardTitle.value)
-    .map((item: any) => item.text)
+  const titleText = cardTitle.value
+  const bodyTexts = body
+    .filter((item): item is AdaptiveCardElement & { text: string } =>
+      isTextBlock(item) && item.text !== titleText
+    )
+    .map(item => item.text)
     .slice(0, 2) // Limit to first 2 text blocks
 
   return bodyTexts.length > 0 ? bodyTexts.join(' ') : null
@@ -142,9 +231,10 @@ const hasActions = computed(() => {
 
 // Actions label
 const actionsLabel = computed(() => {
-  if (!hasActions.value) return ''
+  const actions = cardPayload.value?.actions
+  if (!actions || !Array.isArray(actions) || actions.length === 0) return ''
 
-  const count = cardPayload.value.actions.length
+  const count = actions.length
   return count === 1 ? '1 action available' : `${count} actions available`
 })
 </script>

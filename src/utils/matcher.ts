@@ -7,10 +7,8 @@
  */
 
 import type { IMessage } from '@cognigy/socket-client'
-import type { ChatConfig, MessagePlugin } from '@/types'
-
-// Message type components will be imported here as they're created
-// For now, we'll use component references
+import type { ChatConfig, MatchRule, MessagePlugin, MatchResult } from '../types'
+import { isAdaptiveCardPayload } from '../types'
 
 /**
  * Check if message has channel payload
@@ -52,10 +50,11 @@ function isOnlyEscapeSequence(text: any): boolean {
 }
 
 /**
- * Default match rules
- * These mirror the React version's defaultConfig
+ * Default match rules for internal message types.
+ * These rules map message data structures to component names.
+ * Components are resolved by name lookup in Message.vue.
  */
-export function createDefaultMatchRules(): MessagePlugin[] {
+export function createDefaultMatchRules(): MatchRule[] {
   return [
     // xApp submit
     {
@@ -63,7 +62,6 @@ export function createDefaultMatchRules(): MessagePlugin[] {
       match: (message) => {
         return message?.data?._plugin?.type === 'x-app-submit'
       },
-      component: {} as any, // Will be replaced with actual component
     },
 
     // Webchat3Event
@@ -72,7 +70,6 @@ export function createDefaultMatchRules(): MessagePlugin[] {
       match: (message) => {
         return !!message?.data?._cognigy?._webchat3?.type
       },
-      component: {} as any,
     },
 
     // Date picker
@@ -81,7 +78,6 @@ export function createDefaultMatchRules(): MessagePlugin[] {
       match: (message) => {
         return message?.data?._plugin?.type === 'date-picker'
       },
-      component: {} as any,
     },
 
     // Text with buttons / Quick Replies
@@ -108,7 +104,6 @@ export function createDefaultMatchRules(): MessagePlugin[] {
 
         return !shouldSkip && (hasQuickReplies || isButtonTemplate || hasMessengerText)
       },
-      component: {} as any,
     },
 
     // Image
@@ -122,7 +117,6 @@ export function createDefaultMatchRules(): MessagePlugin[] {
 
         return channelConfig.message?.attachment?.type === 'image'
       },
-      component: {} as any,
     },
 
     // Video
@@ -136,7 +130,6 @@ export function createDefaultMatchRules(): MessagePlugin[] {
 
         return channelConfig.message?.attachment?.type === 'video'
       },
-      component: {} as any,
     },
 
     // Audio
@@ -150,7 +143,6 @@ export function createDefaultMatchRules(): MessagePlugin[] {
 
         return channelConfig.message?.attachment?.type === 'audio'
       },
-      component: {} as any,
     },
 
     // File
@@ -159,7 +151,6 @@ export function createDefaultMatchRules(): MessagePlugin[] {
       match: (message) => {
         return !!message?.data?.attachments
       },
-      component: {} as any,
     },
 
     // List
@@ -173,7 +164,6 @@ export function createDefaultMatchRules(): MessagePlugin[] {
 
         return channelConfig.message?.attachment?.payload?.template_type === 'list'
       },
-      component: {} as any,
     },
 
     // Gallery
@@ -187,34 +177,31 @@ export function createDefaultMatchRules(): MessagePlugin[] {
 
         return channelConfig.message?.attachment?.payload?.template_type === 'generic'
       },
-      component: {} as any,
     },
 
     // Adaptive Card
     {
       name: 'AdaptiveCard',
       match: (message, config) => {
-        const _webchat = (message?.data?._cognigy?._webchat as any)?.adaptiveCard
-        const _defaultPreview = (message?.data?._cognigy?._defaultPreview as any)?.adaptiveCard
-        const _plugin = message?.data?._plugin?.type === 'adaptivecards'
+        const webchatPayload = message?.data?._cognigy?._webchat
+        const defaultPreviewPayload = message?.data?._cognigy?._defaultPreview
+        const hasWebchatAdaptiveCard = isAdaptiveCardPayload(webchatPayload)
+        const hasDefaultPreviewAdaptiveCard = isAdaptiveCardPayload(defaultPreviewPayload)
+        const isPluginAdaptiveCard = message?.data?._plugin?.type === 'adaptivecards'
         const defaultPreviewEnabled = config?.settings?.widgetSettings?.enableDefaultPreview
 
-        if (message.data?._cognigy?._defaultPreview?.message && defaultPreviewEnabled) {
+        // Skip if default preview has a message and is enabled
+        if (defaultPreviewPayload?.message && defaultPreviewEnabled) {
           return false
         }
 
-        if (
-          (_defaultPreview && defaultPreviewEnabled) ||
-          (_webchat && _defaultPreview && !defaultPreviewEnabled) ||
-          _webchat ||
-          _plugin
-        ) {
-          return true
-        }
-
-        return false
+        return (
+          (hasDefaultPreviewAdaptiveCard && defaultPreviewEnabled) ||
+          (hasWebchatAdaptiveCard && hasDefaultPreviewAdaptiveCard && !defaultPreviewEnabled) ||
+          hasWebchatAdaptiveCard ||
+          isPluginAdaptiveCard
+        )
       },
-      component: {} as any,
     },
 
     // Text message (fallback)
@@ -251,7 +238,6 @@ export function createDefaultMatchRules(): MessagePlugin[] {
                message?.text !== undefined &&
                message?.text !== ''
       },
-      component: {} as any,
     },
   ]
 }
@@ -260,38 +246,38 @@ export function createDefaultMatchRules(): MessagePlugin[] {
  * Match a message to component(s)
  * @param message - The message to match
  * @param config - Optional configuration
- * @param externalPlugins - Custom plugins to check first
- * @returns Array of matched plugins
+ * @param externalPlugins - Custom plugins to check first (these provide their own components)
+ * @returns Array of matched rules/plugins
  */
 export function match(
   message: IMessage,
   config?: ChatConfig,
   externalPlugins: MessagePlugin[] = []
-): MessagePlugin[] {
+): MatchResult[] {
   // Combine external plugins with default rules
   // External plugins are checked first
-  const allRules = [...externalPlugins, ...createDefaultMatchRules()]
+  const allRules: MatchResult[] = [...externalPlugins, ...createDefaultMatchRules()]
 
-  const matchedPlugins: MessagePlugin[] = []
+  const matchedRules: MatchResult[] = []
 
-  for (const plugin of allRules) {
+  for (const rule of allRules) {
     try {
-      if (plugin.match(message, config)) {
-        matchedPlugins.push(plugin)
+      if (rule.match(message, config)) {
+        matchedRules.push(rule)
 
         // Stop matching unless passthrough is enabled
-        if (!plugin.options?.passthrough) {
+        if (!rule.options?.passthrough) {
           break
         }
       }
     } catch (error) {
       console.error('Matcher: Error in match function', {
-        pluginName: plugin.name,
+        ruleName: rule.name,
         error,
         messageId: message.traceId,
       })
     }
   }
 
-  return matchedPlugins
+  return matchedRules
 }

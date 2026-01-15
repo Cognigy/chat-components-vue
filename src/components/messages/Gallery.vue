@@ -51,8 +51,8 @@ import GalleryItem from './GalleryItem.vue'
 import { ArrowBackIcon } from '../../assets/svg'
 import { useMessageContext } from '../../composables/useMessageContext'
 import { getChannelPayload } from '../../utils/matcher'
-import { getRandomId, interpolateString } from '../../utils/helpers'
-import type { IWebchatTemplateAttachment, IWebchatAttachmentElement } from '../../types'
+import { getRandomId } from '../../utils/helpers'
+import type { IWebchatTemplateAttachment } from '../../types'
 
 // Import Swiper styles
 import 'swiper/css'

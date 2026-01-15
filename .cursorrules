@@ -1,0 +1,234 @@
+# Cursor Rules for @cognigy/chat-components-vue
+
+## Project Context
+
+Vue 3 implementation of @cognigy/chat-components library for rendering chat messages.
+
+**Stack:** Vue 3, TypeScript, Vite, Vitest, CSS Modules
+
+**Architecture:**
+- Plugin-based message matching (`src/utils/matcher.ts`)
+- Main `Message.vue` routes to specific message components
+- Context via `useMessageContext()` (provide/inject)
+- CSS Modules with `useCssModule()`
+
+## Critical Rules
+
+### 1. NEVER Use `as any`
+
+**`as any` is an antipattern.** It bypasses TypeScript's type safety and should be avoided and corrected.
+
+```typescript
+// WRONG - bypasses type checking
+const data = response.data as any
+const id = (message as any).id
+
+// CORRECT - use proper types
+interface ApiResponse { user: { name: string } }
+const data = response.data as ApiResponse
+
+// CORRECT - use type guards
+function hasId(msg: unknown): msg is { id: string } {
+  return typeof msg === 'object' && msg !== null && 'id' in msg
+}
+if (hasId(message)) {
+  const id = message.id  // Type-safe!
+}
+
+// CORRECT - extend incomplete external types
+interface IMessageWithId extends IMessage {
+  id?: string
+}
+```
+
+**When you find `as any`:** Create proper interfaces, add type guards, or document upstream type issues.
+
+### 2. NEVER Destructure Props
+
+```typescript
+// CORRECT
+const props = defineProps<Props>()
+const value = computed(() => props.value)
+
+// WRONG - breaks reactivity
+const { value } = defineProps<Props>()
+```
+
+### 3. ALWAYS Import CSS Module in Script
+
+```vue
+<script setup lang="ts">
+import { useCssModule } from 'vue'
+const $style = useCssModule()  // Required!
+</script>
+
+<style module>
+.wrapper { }
+</style>
+```
+
+### 4. Use MessageContext for Shared State
+
+```typescript
+import { useMessageContext } from '../../composables/useMessageContext'
+const { message, config, action, onEmitAnalytics } = useMessageContext()
+```
+
+### 5. Test Context Key Must Be Cast as Symbol
+
+```typescript
+provide: {
+  [MessageContextKey as symbol]: { message, config, action, onEmitAnalytics }
+}
+```
+
+## Code Style
+
+### Prefer Ranch Over Skyscraper
+
+Write simple, robust code. Avoid:
+- Over-engineered abstractions
+- Clever one-liners sacrificing clarity
+- Deeply nested reactive expressions
+- Premature optimization
+
+Prefer:
+- Straightforward, explicit code
+- Simple single-purpose functions
+- Clear variable names
+- Flat control flow
+
+### Error Handling
+
+Always explicit, never silent:
+
+```typescript
+// WRONG
+const text = msg.data._cognigy._webchat.message.text
+
+// CORRECT
+const text = message.data?._cognigy?._webchat?.message?.text
+if (!text) {
+  console.warn('processMessage: no text found', { messageId: message.id })
+  return null
+}
+```
+
+### DRY Principle
+
+- Production code: Eliminate duplication
+- Tests: Repetition OK for clarity and isolation
+
+## Component Template
+
+```vue
+<template>
+  <div :class="$style.wrapper">
+    <Typography variant="body-regular">{{ displayText }}</Typography>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, useCssModule } from 'vue'
+import { useMessageContext } from '../../composables/useMessageContext'
+import Typography from '../common/Typography.vue'
+
+const $style = useCssModule()
+
+interface Props {
+  customProp?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  customProp: 'default',
+})
+
+const { message, config, action } = useMessageContext()
+
+const displayText = computed(() => message.text || props.customProp)
+</script>
+
+<style module>
+.wrapper {
+  padding: 16px;
+}
+</style>
+```
+
+## Test Template
+
+```typescript
+import { describe, it, expect, vi } from 'vitest'
+import { mount } from '@vue/test-utils'
+import Component from '../src/components/Component.vue'
+import { MessageContextKey } from '../src/composables/useMessageContext'
+
+describe('Component', () => {
+  const createMessage = (overrides = {}) => ({
+    text: 'Test',
+    source: 'bot' as const,
+    timestamp: '123',
+    data: {},
+    ...overrides,
+  })
+
+  const mountComponent = (message = createMessage(), config = {}) => {
+    return mount(Component, {
+      global: {
+        provide: {
+          [MessageContextKey as symbol]: {
+            message,
+            config,
+            action: vi.fn(),
+            onEmitAnalytics: vi.fn(),
+          },
+        },
+      },
+    })
+  }
+
+  it('renders message text', () => {
+    const wrapper = mountComponent()
+    expect(wrapper.text()).toContain('Test')
+  })
+
+  it('handles missing text gracefully', () => {
+    const wrapper = mountComponent(createMessage({ text: '' }))
+    expect(wrapper.find('[data-testid="fallback"]').exists()).toBe(true)
+  })
+})
+```
+
+## Directory Structure
+
+```
+src/
+├── components/
+│   ├── Message.vue          # Main router
+│   ├── common/              # ChatBubble, ActionButtons, Typography
+│   └── messages/            # TextMessage, Gallery, List, etc.
+├── composables/             # useMessageContext, useSanitize
+├── utils/                   # matcher, sanitize, helpers
+└── types/                   # TypeScript definitions
+```
+
+## Commands
+
+```bash
+npm run dev          # Dev server
+npm run test         # Run tests
+npm run test:watch   # Watch mode
+npm run build        # Build
+npm run type-check   # Type check
+```
+
+## Checklist Before Completion
+
+- [ ] **No `as any`** - use proper types or type guards
+- [ ] Props not destructured
+- [ ] CSS modules imported with `useCssModule()`
+- [ ] Error cases handled with logging
+- [ ] Null/undefined checks at boundaries
+- [ ] Tests cover happy path and errors
+- [ ] No silent failures
+- [ ] Simple, readable code

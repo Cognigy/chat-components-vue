@@ -80,7 +80,7 @@ const $style = useCssModule()
 
 // Context and config
 const { action, config, onEmitAnalytics } = useMessageContext()
-const dataMessageId = (window as any).__TEST_MESSAGE_ID__ // For testing
+const dataMessageId = window.__TEST_MESSAGE_ID__ // For testing
 
 // Sanitize HTML
 const { processHTML } = useSanitize()

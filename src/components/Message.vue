@@ -21,9 +21,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useCssModule } from 'vue'
+import { computed, useCssModule, type Component } from 'vue'
 import { match } from '../utils/matcher'
 import { provideMessageContext } from '../composables/useMessageContext'
+import { getMessageId, isMessagePlugin } from '../types'
 import type { MessageProps } from '../types'
 
 const $style = useCssModule()
@@ -51,9 +52,7 @@ const props = withDefaults(defineProps<MessageProps>(), {
 })
 
 // Generate a unique message ID for accessibility
-const dataMessageId = computed(() => {
-  return (props.message as any).id || `message-${props.message.timestamp}`
-})
+const dataMessageId = computed(() => getMessageId(props.message))
 
 // Provide message context for child components
 provideMessageContext({
@@ -63,8 +62,8 @@ provideMessageContext({
   onEmitAnalytics: props.onEmitAnalytics || (() => {}),
 })
 
-// Component map for matching (using names from matcher.ts)
-const componentMap: Record<string, any> = {
+// Component map for internal match rules (maps rule names to Vue components)
+const componentMap: Record<string, Component> = {
   'Text': TextMessage,
   'Image': ImageMessage,
   'Video': VideoMessage,
@@ -85,10 +84,17 @@ const matchedComponents = computed(() => {
     return []
   }
 
-  // Map matched plugin names to actual Vue components
+  // Resolve components from match results
   return matched
-    .map(plugin => componentMap[plugin.name])
-    .filter(Boolean)
+    .map(rule => {
+      // External plugins (MessagePlugin) provide their own component
+      if (isMessagePlugin(rule)) {
+        return rule.component
+      }
+      // Internal rules (MatchRule) use name lookup in componentMap
+      return componentMap[rule.name] ?? null
+    })
+    .filter((c): c is Component => c !== null)
 })
 
 // Root element classes
