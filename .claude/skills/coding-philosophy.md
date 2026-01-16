@@ -353,17 +353,20 @@ Before submitting code, verify:
 
 ### Quality
 - ✅ No duplicated code
-- ✅ **No `as any` type assertions** (use proper types or type guards)
+- ✅ **Public API types define clear contracts** (props, callbacks, exports)
+- ✅ `any` only used for acceptable cases (extensibility, pass-through, external lib gaps)
 - ✅ Functions are focused (do one thing well)
 - ✅ No magic numbers or strings (use constants)
 - ✅ Performance-sensitive paths are optimized
 - ✅ Code follows team conventions
 
 ### Testing
-- ✅ Tests cover happy path
-- ✅ Tests cover error cases
-- ✅ Tests cover edge cases
-- ✅ Tests are readable and maintainable
+- ✅ **Tests verify behavior** (not just "exists" or "defined" checks)
+- ✅ **No CSS class existence tests** (brittle, breaks on refactor)
+- ✅ Tests cover config effects (settings change behavior)
+- ✅ Tests cover interactions (actions called with correct payloads)
+- ✅ Data-driven tests for repetitive cases (`it.each`)
+- ✅ Tests are readable and self-contained
 
 ## When in Doubt
 
@@ -628,51 +631,51 @@ describe('updateUser', () => {
 
 ## Anti-Patterns to Avoid
 
-### 1. Using `as any` in TypeScript
+### 1. TypeScript Typing Philosophy
 
-**`as any` is a critical antipattern** that bypasses TypeScript's type safety. It should be avoided and corrected when found.
+**Root types (`any`, `unknown`) indicate a design decision, not a solution.**
+
+Neither `any` nor `unknown` should be common in a well-typed codebase. If you're reaching for root types frequently, something is wrong with your type design.
+
+**The `any` vs `unknown` debate is a distraction:**
+
+Some developers abolish `any` at all costs and enforce `unknown`. Others use `any` wherever they want to skip typing. Both miss the point:
+
+- **The problem with `unknown` zealotry:** Narrowing requires knowing the types anyway (`if (typeof x === 'string')`). This is the same work as defining `x: string | number` upfront. You end up with either a union type or runtime checks that duplicate what a type definition would provide. `unknown` just adds ceremony.
+
+- **The problem with `any` everywhere:** Defeats the purpose of TypeScript. Types exist to catch errors at compile time - `any` opts out of this.
+
+**The real solution:**
+
+**First ask: Can I define a proper type?**
+- If YES → Define it (interface, union type, `Record<string, T>`)
+- If NO (genuinely dynamic/volatile) → Use `any` consciously with optional chaining
+
+**Decision tree:**
+1. **Can I define the type?** → Define it
+2. **Is this a public API?** → Must define it (this is your contract with consumers)
+3. **Is data genuinely dynamic?** → Use `any` with optional chaining (`data?.id`)
+4. **External library gap?** → Use `any` with explanatory comment
 
 ```typescript
-// ❌ Bad: Bypasses type checking entirely
-const data = response.data as any
-const name = data.user.name  // No type checking!
-
-// ✅ Good: Create proper interfaces
-interface ApiResponse {
-  user: { name: string; email: string }
-}
-const data = response.data as ApiResponse
-const name = data.user.name  // Type-checked!
-
-// ❌ Bad: Accessing unknown properties
-const id = (message as any).id
-
-// ✅ Good: Use type guards
-function hasId(obj: unknown): obj is { id: string } {
-  return typeof obj === 'object' && obj !== null && 'id' in obj
-}
-if (hasId(message)) {
-  const id = message.id  // Type-safe!
+// PUBLIC API: Must be typed (contract)
+interface Props {
+  customIcon?: Component | string
+  onAnalytics?: (event: string, data: AnalyticsEvent) => void
 }
 
-// ✅ Good: Extend incomplete external types
-interface IMessageWithId extends IMessage {
-  id?: string
+// EXTENSIBILITY: any OK for dynamic keys
+interface Translations {
+  [key: string]: any  // i18n, user-defined keys
 }
+
+// PASS-THROUGH: any OK, flows unchanged
+type MessageSender = (data?: Record<string, any>) => void
 ```
 
-**Why `as any` is problematic:**
-- Disables type checking - errors are silently ignored
-- Spreads through codebase - `any` infects other types
-- Hides design issues - often indicates missing interfaces
-- Makes refactoring dangerous - no compiler help
-
-**When you find `as any`:**
-1. Investigate why it was added
-2. Create proper interfaces for the data structure
-3. Add type guards for runtime validation
-4. Extend incomplete external types if needed
-5. Document upstream type issues if unavoidable
+**When `any` is acceptable:** Extensibility points, pass-through data, external library gaps
+**When `any` is NOT acceptable:** Public APIs, known shapes, convenience shortcuts
+**Don't use `unknown` as "safer any"** - it's not, it just adds ceremony
 
 ### 2. Premature Abstraction
 ```javascript

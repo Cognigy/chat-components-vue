@@ -143,8 +143,10 @@ export interface ChatSettings {
       downloadTranscript?: string
       playVideo?: string
       slide?: string
+      // Extensibility: consumers can add custom aria labels with any key
       [key: string]: any
     }
+    // Extensibility: consumers can add custom translation sections
     [key: string]: any
   }
 }
@@ -164,7 +166,9 @@ export interface ChatTheme {
 }
 
 /**
- * Message sender callback type
+ * Message sender callback type.
+ * The data parameter uses Record<string, any> because it passes through
+ * unchanged to @cognigy/socket-client - shape is determined by backend.
  */
 export type MessageSender = (
   text?: string,
@@ -176,6 +180,27 @@ export interface SendMessageOptions {
   label: string
   collate: boolean
 }
+
+// =============================================================================
+// Component Prop Types
+// =============================================================================
+
+/**
+ * Custom icon for action buttons.
+ * Can be a Vue component or a string identifier.
+ */
+export type CustomIcon = Component | string
+
+/**
+ * Analytics event data passed to analytics callbacks.
+ * Shape varies by event type, so we use Record<string, any> for flexibility.
+ */
+export type AnalyticsEventData = Record<string, any>
+
+/**
+ * Callback for emitting analytics events from components.
+ */
+export type AnalyticsEventCallback = (event: string, data?: AnalyticsEventData) => void
 
 /**
  * Props for the Message component

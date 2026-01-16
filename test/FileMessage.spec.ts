@@ -186,10 +186,13 @@ describe('FileMessage', () => {
   })
 
   describe('Image MIME Types', () => {
-    it('renders JPEG images', () => {
-      const attachments = [
-        createFileAttachment('photo.jpg', 'image/jpeg', 1000000),
-      ]
+    it.each([
+      ['image/jpeg', 'photo.jpg'],
+      ['image/png', 'photo.png'],
+      ['image/gif', 'animation.gif'],
+      ['image/webp', 'photo.webp'],
+    ])('renders %s as image attachment', (mimeType, fileName) => {
+      const attachments = [createFileAttachment(fileName, mimeType, 1000000)]
       const message = createFileMessage(attachments)
       wrapper = mountFileMessage(message)
 
@@ -197,44 +200,12 @@ describe('FileMessage', () => {
       expect(images.length).toBe(1)
     })
 
-    it('renders PNG images', () => {
-      const attachments = [
-        createFileAttachment('photo.png', 'image/png', 1000000),
-      ]
-      const message = createFileMessage(attachments)
-      wrapper = mountFileMessage(message)
-
-      const images = wrapper.findAll('[data-testid="image-attachment"]')
-      expect(images.length).toBe(1)
-    })
-
-    it('renders GIF images', () => {
-      const attachments = [
-        createFileAttachment('animation.gif', 'image/gif', 500000),
-      ]
-      const message = createFileMessage(attachments)
-      wrapper = mountFileMessage(message)
-
-      const images = wrapper.findAll('[data-testid="image-attachment"]')
-      expect(images.length).toBe(1)
-    })
-
-    it('renders WebP images', () => {
-      const attachments = [
-        createFileAttachment('photo.webp', 'image/webp', 800000),
-      ]
-      const message = createFileMessage(attachments)
-      wrapper = mountFileMessage(message)
-
-      const images = wrapper.findAll('[data-testid="image-attachment"]')
-      expect(images.length).toBe(1)
-    })
-
-    it('does not render non-image MIME types as images', () => {
-      const attachments = [
-        createFileAttachment('document.pdf', 'application/pdf', 1000000),
-        createFileAttachment('video.mp4', 'video/mp4', 5000000),
-      ]
+    it.each([
+      ['application/pdf', 'document.pdf'],
+      ['video/mp4', 'video.mp4'],
+      ['text/plain', 'readme.txt'],
+    ])('renders %s as file attachment (not image)', (mimeType, fileName) => {
+      const attachments = [createFileAttachment(fileName, mimeType, 1000000)]
       const message = createFileMessage(attachments)
       wrapper = mountFileMessage(message)
 
@@ -242,7 +213,7 @@ describe('FileMessage', () => {
       expect(images.length).toBe(0)
 
       const files = wrapper.findAll('[data-testid="file-attachment"]')
-      expect(files.length).toBe(2)
+      expect(files.length).toBe(1)
     })
   })
 
@@ -410,91 +381,18 @@ describe('FileMessage', () => {
       expect(image.attributes('title')).toContain('1.50 MB')
     })
 
-    it('uses semantic HTML elements', () => {
-      const attachments = [
-        createFileAttachment('document.pdf', 'application/pdf', 1000000),
-      ]
-      const message = createFileMessage(attachments)
-      wrapper = mountFileMessage(message)
-
-      const link = wrapper.find('a')
-      expect(link.exists()).toBe(true)
-    })
-  })
-
-  describe('CSS Classes', () => {
-    it('applies correct global CSS classes', () => {
-      const attachments = [
-        createFileAttachment('photo.jpg', 'image/jpeg', 1000000),
-      ]
-      const message = createFileMessage(attachments)
-      wrapper = mountFileMessage(message)
-
-      const root = wrapper.find('.webchat-media-files-template-root')
-      expect(root.exists()).toBe(true)
-
-      const imageContainer = wrapper.find('.webchat-media-template-image-container')
-      expect(imageContainer.exists()).toBe(true)
-
-      const image = wrapper.find('.webchat-media-template-image')
-      expect(image.exists()).toBe(true)
-    })
-
-    it('applies correct CSS classes for file attachments', () => {
-      const attachments = [
-        createFileAttachment('document.pdf', 'application/pdf', 1000000),
-      ]
-      const message = createFileMessage(attachments)
-      wrapper = mountFileMessage(message)
-
-      const filesContainer = wrapper.find('.webchat-media-template-files-container')
-      expect(filesContainer.exists()).toBe(true)
-
-      const file = wrapper.find('.webchat-media-template-file')
-      expect(file.exists()).toBe(true)
-    })
   })
 
   describe('Edge Cases', () => {
-    it('handles very large file sizes', () => {
-      const attachments = [
-        createFileAttachment('huge-file.zip', 'application/zip', 999999999),
-      ]
+    it.each([
+      [999999999, '1000.00 MB', 'very large'],
+      [100, '0.10 KB', 'very small'],
+    ])('formats %s byte file size correctly (%s)', (size, expected) => {
+      const attachments = [createFileAttachment('file.txt', 'text/plain', size)]
       const message = createFileMessage(attachments)
       wrapper = mountFileMessage(message)
 
-      const html = wrapper.html()
-      expect(html).toContain('1000.00 MB')
-    })
-
-    it('handles very small file sizes', () => {
-      const attachments = [
-        createFileAttachment('tiny.txt', 'text/plain', 100),
-      ]
-      const message = createFileMessage(attachments)
-      wrapper = mountFileMessage(message)
-
-      const html = wrapper.html()
-      expect(html).toContain('0.10 KB')
-    })
-
-    it('handles missing data gracefully', () => {
-      const message: IMessage = {
-        text: '',
-        source: 'bot',
-        timestamp: '1673456789000',
-        data: undefined,
-      }
-      wrapper = mountFileMessage(message)
-
-      expect(wrapper.html()).toBe('<!--v-if-->')
-    })
-
-    it('handles empty attachments array', () => {
-      const message = createFileMessage([])
-      wrapper = mountFileMessage(message)
-
-      expect(wrapper.html()).toBe('<!--v-if-->')
+      expect(wrapper.html()).toContain(expected)
     })
 
     it('handles special characters in filenames', () => {

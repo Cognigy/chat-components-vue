@@ -38,9 +38,9 @@ export function getChannelPayload(message: IMessage, config?: ChatConfig) {
 }
 
 /**
- * Check if text is only escape sequences
+ * Check if text is only escape sequences (whitespace, newlines, etc.)
  */
-function isOnlyEscapeSequence(text: any): boolean {
+function isOnlyEscapeSequence(text: string | null | undefined): boolean {
   if (typeof text !== 'string') {
     return false
   }

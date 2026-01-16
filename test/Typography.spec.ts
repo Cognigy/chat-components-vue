@@ -185,22 +185,14 @@ describe('Typography', () => {
     expect(wrapper.attributes('tabindex')).toBe('-1')
   })
 
-  it('renders without any props', () => {
-    const wrapper = mount(Typography)
+  it('uses body-regular variant and p tag as defaults', () => {
+    const wrapper = mount(Typography, {
+      slots: { default: 'Default content' },
+    })
 
     expect(wrapper.element.tagName).toBe('P')
     expect(wrapper.classes().some((cls) => cls.includes('body-regular'))).toBe(true)
-  })
-
-  it('handles empty slot content', () => {
-    const wrapper = mount(Typography, {
-      slots: {
-        default: '',
-      },
-    })
-
-    expect(wrapper.text()).toBe('')
-    expect(wrapper.element).toBeTruthy()
+    expect(wrapper.text()).toBe('Default content')
   })
 
   it('combines multiple props correctly', () => {

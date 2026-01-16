@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
 import TextWithButtons from '../src/components/messages/TextWithButtons.vue'
 import { MessageContextKey } from '../src/composables/useMessageContext'

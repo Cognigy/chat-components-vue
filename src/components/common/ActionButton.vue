@@ -5,7 +5,7 @@ import Typography from './Typography.vue'
 import LinkIcon from './LinkIcon.vue'
 import { sanitizeHTMLWithConfig } from '../../utils/sanitize'
 import { getWebchatButtonLabel, interpolateString, moveFocusToMessageFocusTarget } from '../../utils/helpers'
-import type { IWebchatButton, IWebchatQuickReply, ChatConfig, MessageSender } from '../../types'
+import type { IWebchatButton, IWebchatQuickReply, ChatConfig, MessageSender, CustomIcon, AnalyticsEventCallback } from '../../types'
 
 type NormalizedActionButton = {
   type?: string
@@ -27,11 +27,11 @@ interface Props {
   disabled?: boolean
   total: number
   position: number
-  customIcon?: any
+  customIcon?: CustomIcon
   showUrlIcon?: boolean
   config?: ChatConfig
   dataMessageId?: string
-  onEmitAnalytics?: (event: string, data: any) => void
+  onEmitAnalytics?: AnalyticsEventCallback
   size?: 'small' | 'large'
   id?: string
   className?: string

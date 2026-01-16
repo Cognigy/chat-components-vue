@@ -265,7 +265,7 @@ describe('ChatBubble', () => {
     expect(wrapper.classes()).toContain('custom-bubble-class')
   })
 
-  it('handles missing config gracefully', () => {
+  it('applies default styling when config is undefined', () => {
     const message: IMessage = {
       text: 'Test',
       source: 'bot',
@@ -286,22 +286,11 @@ describe('ChatBubble', () => {
       },
     })
 
-    expect(wrapper.exists()).toBe(true)
-    expect(wrapper.html()).toContain('Test')
-  })
-
-  it('handles engagement message source', () => {
-    const message: IMessage = {
-      text: 'Test',
-      source: 'engagement',
-      timestamp: '1673456789000',
-    }
-
-    const wrapper = createWrapper(message)
-
-    expect(wrapper.exists()).toBe(true)
+    // Should use default incoming direction for bot
     const classes = wrapper.classes()
-    expect(classes.some((cls) => cls.includes('bubble'))).toBe(true)
+    expect(classes.some((cls) => cls.includes('incoming'))).toBe(true)
+    // Should not have border disabled (no config)
+    expect(classes.some((cls) => cls.includes('disableBorder'))).toBe(false)
   })
 
   it('combines multiple configuration options', () => {

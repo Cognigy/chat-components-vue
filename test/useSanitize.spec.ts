@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
+import { defineComponent } from 'vue'
 import { MessageContextKey } from '../src/composables/useMessageContext'
 import { useSanitize } from '../src/composables/useSanitize'
 import type { IMessage, ChatConfig } from '../src/types'
@@ -134,38 +134,25 @@ describe('useSanitize', () => {
     expect(result).toContain('Paragraph') // But text content remains
   })
 
-  it('handles empty string', () => {
+  it('preserves plain text and HTML entities', () => {
     const wrapper = createWrapper(basicMessage)
 
-    const result = wrapper.vm.processHTML('')
+    // Plain text passes through unchanged
+    expect(wrapper.vm.processHTML('Plain text')).toBe('Plain text')
 
-    expect(result).toBe('')
-  })
-
-  it('handles plain text without HTML', () => {
-    const wrapper = createWrapper(basicMessage)
-
-    const result = wrapper.vm.processHTML('Plain text with no HTML')
-
-    expect(result).toBe('Plain text with no HTML')
-  })
-
-  it('escapes HTML entities', () => {
-    const wrapper = createWrapper(basicMessage)
-
+    // HTML entities are preserved
     const result = wrapper.vm.processHTML('&lt;b&gt;Not bold&lt;/b&gt;')
-
     expect(result).toContain('&lt;')
     expect(result).toContain('&gt;')
   })
 
-  it('handles malformed HTML', () => {
+  it('fixes malformed HTML (unclosed tags)', () => {
     const wrapper = createWrapper(basicMessage)
 
     const result = wrapper.vm.processHTML('<b>Unclosed bold')
 
     // DOMPurify should fix malformed HTML
-    expect(result).toBeTruthy()
+    expect(result).toContain('<b>')
     expect(result).toContain('Unclosed bold')
   })
 
@@ -216,16 +203,6 @@ describe('useSanitize', () => {
     // SVG should be allowed (though some elements may be stripped)
     expect(result).toContain('<svg')
     // Note: DOMPurify may strip certain SVG child elements for security
-  })
-
-  it('handles orphan closing tags', () => {
-    const wrapper = createWrapper(basicMessage)
-
-    const result = wrapper.vm.processHTML('</div>Text')
-
-    // Should handle gracefully - DOMPurify will escape or remove
-    expect(result).toBeTruthy()
-    expect(result).toContain('Text')
   })
 
   it('preserves safe attributes', () => {

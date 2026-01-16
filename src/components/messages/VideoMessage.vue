@@ -1,7 +1,6 @@
 <template>
   <div v-if="videoData.url" :class="wrapperClasses">
     <div
-      ref="playerWrapperRef"
       :class="[$style.playerWrapper, 'webchat-media-template-video']"
       :role="showLightMode ? 'button' : undefined"
       :tabindex="showLightMode ? 0 : -1"
@@ -97,7 +96,6 @@ const { message, config } = useMessageContext()
 const $style = useCssModule()
 
 // Refs
-const playerWrapperRef = ref<HTMLDivElement>()
 const videoRef = ref<HTMLVideoElement | HTMLIFrameElement>()
 const downloadLinkRef = ref<HTMLAnchorElement>()
 

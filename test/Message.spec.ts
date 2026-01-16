@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Message from '../src/components/Message.vue'
 import type { IMessage } from '../src/types'
@@ -322,23 +322,11 @@ describe('Message', () => {
   })
 
   describe('Props', () => {
-    it('accepts action callback', () => {
-      const action = vi.fn()
-      const message = createMessage()
-
-      mount(Message, {
-        props: { message, action },
-      })
-
-      // Action is provided to context
-      expect(action).toBeDefined()
-    })
-
-    it('accepts config', () => {
+    it('passes config to child components for theming', () => {
       const config = {
         settings: {
           layout: {
-            title: 'Test Chat',
+            botOutputMaxWidthPercentage: 75,
           },
         },
       }
@@ -348,32 +336,9 @@ describe('Message', () => {
         props: { message, config },
       })
 
-      expect(wrapper.exists()).toBe(true)
-    })
-
-    it('accepts onEmitAnalytics callback', () => {
-      const onEmitAnalytics = vi.fn()
-      const message = createMessage()
-
-      mount(Message, {
-        props: { message, onEmitAnalytics },
-      })
-
-      expect(onEmitAnalytics).toBeDefined()
-    })
-
-    it('accepts prevMessage for context', () => {
-      const message = createMessage()
-      const prevMessage = createMessage({
-        text: 'Previous message',
-        timestamp: '1673456788000',
-      })
-
-      const wrapper = mount(Message, {
-        props: { message, prevMessage },
-      })
-
-      expect(wrapper.exists()).toBe(true)
+      // Config affects bubble styling
+      const bubble = wrapper.find('.chat-bubble')
+      expect(bubble.attributes('style')).toContain('max-width: 75%')
     })
   })
 
@@ -527,19 +492,5 @@ describe('Message', () => {
       expect(wrapper.text()).toContain('Option 1')
     })
 
-    it('handles null/undefined props gracefully', () => {
-      const message = createMessage()
-
-      const wrapper = mount(Message, {
-        props: {
-          message,
-          action: undefined,
-          config: undefined,
-          onEmitAnalytics: undefined,
-        },
-      })
-
-      expect(wrapper.exists()).toBe(true)
-    })
   })
 })

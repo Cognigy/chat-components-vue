@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import TextMessage from '../src/components/messages/TextMessage.vue'
 import ChatBubble from '../src/components/common/ChatBubble.vue'
@@ -228,7 +228,7 @@ describe('TextMessage', () => {
     expect(wrapper.html()).toContain('<b>User input</b>')
   })
 
-  it('handles empty text gracefully', () => {
+  it('renders empty text without crashing', () => {
     const message: IMessage = {
       text: '',
       source: 'bot',
@@ -237,20 +237,10 @@ describe('TextMessage', () => {
 
     const wrapper = createWrapper(message)
 
-    expect(wrapper.exists()).toBe(true)
-    expect(wrapper.text()).toBe('')
-  })
-
-  it('handles whitespace text', () => {
-    const message: IMessage = {
-      text: '   ',
-      source: 'bot',
-      timestamp: '1673456789000',
-    }
-
-    const wrapper = createWrapper(message)
-
-    expect(wrapper.exists()).toBe(true)
+    // Component renders with empty paragraph
+    const paragraph = wrapper.find('p')
+    expect(paragraph.exists()).toBe(true)
+    expect(paragraph.text()).toBe('')
   })
 
   it('renders markdown tables correctly', () => {
@@ -312,19 +302,19 @@ describe('TextMessage', () => {
     expect(paragraph.element.innerHTML).toContain('Line 1\nLine 2\nLine 3')
   })
 
-  it('handles special characters', () => {
+  it('safely renders HTML entities in text', () => {
     const message: IMessage = {
-      text: 'Special: <>&"\'',
+      text: 'Compare: 5 < 10 & 10 > 5',
       source: 'bot',
       timestamp: '1673456789000',
     }
 
     const wrapper = createWrapper(message)
 
-    expect(wrapper.exists()).toBe(true)
-    // Characters should be escaped or handled safely
-    const html = wrapper.html()
-    expect(html).toBeTruthy()
+    // Text content should be preserved (entities may be escaped in HTML)
+    expect(wrapper.text()).toContain('Compare')
+    expect(wrapper.text()).toContain('5')
+    expect(wrapper.text()).toContain('10')
   })
 
   it('applies markdown className when rendering markdown', async () => {
