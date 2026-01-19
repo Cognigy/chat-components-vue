@@ -812,6 +812,132 @@ const data = response as any
 3. **Add type guards** for runtime validation
 4. **Document upstream issues** if external types are incomplete
 
+### TypeScript Typing Philosophy
+
+#### The Root Type Problem
+
+**Root types (`any`, `unknown`) indicate a design decision, not a solution.**
+
+TypeScript provides two "escape hatches" from its type system:
+- `any` - tells the compiler "shut up, I know what I'm doing"
+- `unknown` - the theoretical "safe any" that blocks all operations
+
+Neither should be common in a well-typed codebase. If you're reaching for root types frequently, something is wrong with your type design.
+
+#### The `any` vs `unknown` Debate is a Distraction
+
+Some developers abolish `any` at all costs and enforce `unknown`. Others use `any` wherever they want to skip proper type definitions. Both miss the point.
+
+**The problem with `unknown` zealotry:**
+- Narrowing requires knowing the types anyway: `if (typeof x === 'string')`
+- This is the same work as defining `x: string | number | null` upfront
+- You end up with either a union type OR runtime checks that duplicate what a type definition would provide
+- `unknown` just adds ceremony without real benefit
+
+**The problem with `any` everywhere:**
+- Defeats the purpose of TypeScript entirely
+- Types exist to catch errors at compile time - `any` opts out of this
+
+#### The Pragmatic Approach
+
+**First ask: Can I define a proper type?**
+
+```typescript
+// If you're tempted to write this:
+function process(data: any) {
+  return data?.user?.name
+}
+
+// Ask: Do I know what shapes `data` can have?
+// If YES → Define them:
+interface UserData {
+  user?: { name?: string }
+}
+function process(data: UserData) {
+  return data?.user?.name
+}
+
+// If NO (genuinely volatile/external) → Use any consciously:
+function process(data: any) {
+  // Data comes from external API with no stable contract
+  return data?.user?.name
+}
+```
+
+**Decision tree:**
+
+1. **Can I define the type?** → Define it (interface, union, `Record<string, T>`)
+2. **Is this a public API?** → Must define it (this is your contract with consumers)
+3. **Is the data genuinely dynamic/volatile?** → Use `any` with optional chaining
+4. **External library with incomplete types?** → Use `any` with a comment explaining why
+
+**Don't use `unknown` as "safer any"** - it's not. It just forces you to:
+- Write runtime type checks that duplicate what a proper type definition would provide
+- Or use `as Type` assertions, which is the same as `any` with extra steps
+- Or write absurdities like `params.id as unknown as string`
+
+#### Types as Contracts (Library Context)
+
+**In a library, types ARE the public contract.** They tell consumers:
+- What data shapes are valid inputs
+- What structure callbacks will receive
+- What configuration options exist
+
+```typescript
+// ❌ Bad: Consumer has no guidance
+interface Props {
+  customIcon?: any
+  onAnalytics?: (event: string, data: any) => void
+}
+
+// ✅ Good: Clear contract for consumers
+interface Props {
+  customIcon?: Component | string
+  onAnalytics?: (event: string, data: AnalyticsEvent) => void
+}
+```
+
+Public API types (props, callbacks, exports) should always be properly defined.
+
+#### Acceptable Uses of `any`
+
+| Scenario | Verdict |
+|----------|---------|
+| Public props/callbacks | **Define types** - this is your contract |
+| Known data shapes | **Define types** - that's why TypeScript exists |
+| Extensibility points | **`any` OK** - e.g., `[key: string]: any` for dynamic keys |
+| Pass-through to external | **`any` OK** - data flows unchanged, you don't control shape |
+| External library gaps | **`any` OK** - add comment explaining the gap |
+| Convenience/shortcut | **Not OK** - take time to define proper types |
+
+#### Example: Acceptable `any` Usage
+
+```typescript
+// ✅ Extensibility: consumers can add custom translation keys
+interface CustomTranslations {
+  greeting?: string
+  farewell?: string
+  [key: string]: any  // Dynamic keys for i18n
+}
+
+// ✅ Pass-through: data flows to external system unchanged
+type MessageSender = (
+  text?: string,
+  data?: Record<string, any> | null  // Shape determined by backend
+) => void
+
+// ✅ External library gap: DOMPurify types are incomplete
+// DOMPurify's hook types don't fully describe the node parameter
+DOMPurify.addHook('beforeSanitizeElements', (node: any) => {
+  if (node instanceof HTMLUnknownElement) {
+    // ...
+  }
+})
+
+// ❌ Not acceptable: Convenience shortcut
+const config: any = { ... }  // Just define the interface!
+```
+
 ### Performance
 
 ```vue
@@ -836,8 +962,95 @@ watch(state, () => {
 
 ### Testing
 
+#### Write Meaningful Tests, Not Checkbox Tests
+
+A good test answers: **"If someone uses this with these inputs, what behavior can they expect?"**
+
+Tests should verify actual behavior, not just that code runs without crashing.
+
+**✅ Meaningful tests:**
+- Security (XSS prevention, sanitization)
+- Configuration effects (does setting X change behavior Y?)
+- User interactions (click handlers invoke correct actions)
+- Accessibility (aria attributes present and correct)
+- Business logic (message routing, data formatting)
+- Error handling (what happens with invalid input?)
+
+**❌ Avoid these test patterns:**
+
 ```typescript
-// ✅ Good: Clear test with error case
+// ❌ Bad: Just checks something "exists"
+it('handles empty text gracefully', () => {
+  const wrapper = createWrapper({ text: '' })
+  expect(wrapper.exists()).toBe(true)  // What does this prove?
+})
+
+// ✅ Good: Verifies actual behavior
+it('renders empty paragraph when text is empty', () => {
+  const wrapper = createWrapper({ text: '' })
+  const paragraph = wrapper.find('p')
+  expect(paragraph.exists()).toBe(true)
+  expect(paragraph.text()).toBe('')
+})
+
+// ❌ Bad: Testing CSS class names (brittle, doesn't test behavior)
+it('applies correct CSS classes', () => {
+  expect(wrapper.find('.webchat-media-template-image').exists()).toBe(true)
+})
+
+// ❌ Bad: Testing that a prop is "defined"
+it('accepts action callback', () => {
+  const action = vi.fn()
+  mount(Component, { props: { action } })
+  expect(action).toBeDefined()  // This proves nothing
+})
+
+// ✅ Good: Test that the prop actually does something
+it('calls action when button is clicked', () => {
+  const action = vi.fn()
+  const wrapper = mount(Component, { props: { action } })
+  await wrapper.find('button').trigger('click')
+  expect(action).toHaveBeenCalledWith('payload', null, { label: 'Button' })
+})
+
+// ❌ Bad: Repetitive tests for same logic
+it('renders JPEG images', () => { /* same test */ })
+it('renders PNG images', () => { /* same test */ })
+it('renders GIF images', () => { /* same test */ })
+it('renders WebP images', () => { /* same test */ })
+
+// ✅ Good: Data-driven test for repetitive cases
+it.each([
+  ['image/jpeg', 'photo.jpg'],
+  ['image/png', 'photo.png'],
+  ['image/gif', 'animation.gif'],
+  ['image/webp', 'photo.webp'],
+])('renders %s as image attachment', (mimeType, fileName) => {
+  const wrapper = mountWithAttachment({ mimeType, fileName })
+  expect(wrapper.find('[data-testid="image-attachment"]').exists()).toBe(true)
+})
+```
+
+#### Test Categories Worth Writing
+
+1. **Security tests** - XSS, injection, sanitization
+2. **Configuration tests** - Settings that change behavior
+3. **Interaction tests** - Clicks, inputs, events
+4. **Accessibility tests** - ARIA, keyboard navigation
+5. **Edge cases** - Empty data, missing fields (but only if they can realistically happen)
+6. **Integration tests** - Components working together
+
+#### Test Categories to Avoid
+
+1. **"It renders" tests** - Just checking `wrapper.exists()`
+2. **CSS class existence tests** - Brittle, refactoring breaks them
+3. **Prop "defined" tests** - Prove nothing about behavior
+4. **Unlikely edge cases** - Scenarios that can't happen with typed APIs
+5. **Duplicate tests** - Same logic tested multiple times
+
+#### Test Template
+
+```typescript
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Component from '../src/components/Component.vue'
@@ -852,40 +1065,30 @@ describe('Component', () => {
     ...overrides,
   })
 
-  it('renders with message', () => {
-    const message = createMessage()
-    const wrapper = mount(Component, {
+  const mountComponent = (message = createMessage(), config = {}) => {
+    return mount(Component, {
       global: {
         provide: {
           [MessageContextKey as symbol]: {
             message,
-            config: {},
+            config,
             action: vi.fn(),
             onEmitAnalytics: vi.fn(),
           },
         },
       },
     })
+  }
 
-    expect(wrapper.text()).toContain('Test')
+  it('renders message text in paragraph', () => {
+    const wrapper = mountComponent(createMessage({ text: 'Hello' }))
+    expect(wrapper.find('p').text()).toContain('Hello')
   })
 
-  it('handles missing text gracefully', () => {
-    const message = createMessage({ text: '' })
-    const wrapper = mount(Component, {
-      global: {
-        provide: {
-          [MessageContextKey as symbol]: {
-            message,
-            config: {},
-            action: vi.fn(),
-            onEmitAnalytics: vi.fn(),
-          },
-        },
-      },
-    })
-
-    expect(wrapper.find('[data-testid="fallback"]').exists()).toBe(true)
+  it('applies config-based styling', () => {
+    const config = { settings: { layout: { maxWidth: 80 } } }
+    const wrapper = mountComponent(createMessage(), config)
+    expect(wrapper.attributes('style')).toContain('max-width: 80%')
   })
 })
 ```
@@ -993,7 +1196,8 @@ Before submitting code, verify:
 - ✅ Errors are logged with sufficient context
 - ✅ Null/undefined checks at boundaries
 - ✅ TypeScript types are accurate and helpful
-- ✅ **No `as any` type assertions** (use proper types or type guards)
+- ✅ **No `any` types** unless genuinely necessary (see "Types as Contracts" section)
+- ✅ Public API types (props, emits, exports) define clear contracts
 - ✅ Performance-sensitive paths are optimized
 - ✅ Tests cover happy path and error cases
 - ✅ No silent failures or swallowed errors

@@ -2,7 +2,7 @@
 import { computed, useCssModule, onMounted, CSSProperties } from 'vue'
 import ActionButton from './ActionButton.vue'
 import { getRandomId } from '../../utils/helpers'
-import type { IWebchatButton, IWebchatQuickReply, ChatConfig, MessageSender } from '../../types'
+import type { IWebchatButton, IWebchatQuickReply, ChatConfig, MessageSender, CustomIcon, AnalyticsEventCallback } from '../../types'
 
 interface Props {
   payload: (IWebchatButton | IWebchatQuickReply)[]
@@ -12,11 +12,11 @@ interface Props {
   containerStyle?: CSSProperties
   buttonClassName?: string
   buttonListItemClassName?: string
-  customIcon?: any
+  customIcon?: CustomIcon
   showUrlIcon?: boolean
   config?: ChatConfig
   dataMessageId?: string
-  onEmitAnalytics?: (event: string, data: any) => void
+  onEmitAnalytics?: AnalyticsEventCallback
   size?: 'small' | 'large'
   templateTextId?: string
   openXAppOverlay?: (url: string | undefined) => void

@@ -280,8 +280,45 @@ defineExpose({
 
 ### Vue Test Template
 
+**IMPORTANT: Write meaningful tests that verify behavior, not checkbox tests.**
+
+A test should answer: **"What behavior can users expect with these inputs?"**
+
+**✅ Test these:**
+- Security (XSS, sanitization)
+- Config effects (settings change behavior)
+- Interactions (clicks invoke actions with correct payloads)
+- Accessibility (ARIA attributes)
+- Business logic (rendering conditions, formatting)
+
+**❌ Avoid these patterns:**
 ```typescript
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+// Bad: Just checks "exists" - proves nothing
+expect(wrapper.exists()).toBe(true)
+
+// Bad: CSS class existence - brittle, breaks on refactor
+expect(wrapper.find('.some-class').exists()).toBe(true)
+
+// Bad: Prop is "defined" - meaningless
+expect(wrapper.attributes('role')).toBeDefined()
+
+// Bad: Repetitive identical tests
+it('renders JPEG', () => {})
+it('renders PNG', () => {})  // Same logic!
+```
+
+**✅ Use data-driven tests for repetitive cases:**
+```typescript
+it.each([
+  ['image/jpeg', 'photo.jpg'],
+  ['image/png', 'photo.png'],
+])('renders %s as image attachment', (mimeType, fileName) => {
+  // Single test covers multiple cases
+})
+```
+
+```typescript
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
 import Component from '../src/components/messages/Component.vue'
 import { MessageContextKey } from '../src/composables/useMessageContext'
@@ -321,51 +358,43 @@ describe('Component', () => {
   })
 
   describe('Rendering', () => {
-    it('renders component', () => {
-      const message = createMessage()
-      wrapper = mountComponent(message)
-
-      expect(wrapper.find('[data-testid="component-name"]').exists()).toBe(true)
-    })
-
-    it('displays message text', () => {
+    it('renders message text in paragraph element', () => {
       const message = createMessage({ text: 'Hello World' })
       wrapper = mountComponent(message)
 
-      expect(wrapper.text()).toContain('Hello World')
+      expect(wrapper.find('p').text()).toContain('Hello World')
     })
 
-    it('does not render when condition not met', () => {
-      const message = createMessage({ text: '' })
-      wrapper = mountComponent(message)
+    it('conditionally renders based on data presence', () => {
+      // When data is present
+      const validMessage = createMessage({ text: 'Valid' })
+      wrapper = mountComponent(validMessage)
+      expect(wrapper.find('[data-testid="component-name"]').exists()).toBe(true)
 
+      // When data is missing - verify specific fallback behavior
+      wrapper.unmount()
+      const emptyMessage = createMessage({ text: '' })
+      wrapper = mountComponent(emptyMessage)
       expect(wrapper.find('[data-testid="component-name"]').exists()).toBe(false)
     })
   })
 
-  describe('Props', () => {
-    it('accepts required prop', () => {
+  describe('Configuration', () => {
+    it('applies max width from config', () => {
       const message = createMessage()
-      wrapper = mountComponent(message, { required: 'test-value' })
+      const config = { settings: { layout: { botOutputMaxWidthPercentage: 75 } } }
+      wrapper = mountComponent(message, {}, config)
 
-      expect(wrapper.props('required')).toBe('test-value')
-    })
-
-    it('uses default for optional prop', () => {
-      const message = createMessage()
-      wrapper = mountComponent(message, { required: 'test' })
-
-      expect(wrapper.props('optional')).toBe(0)
+      expect(wrapper.find('.chat-bubble').attributes('style')).toContain('max-width: 75%')
     })
   })
 
   describe('User Interaction', () => {
-    it('handles button click', async () => {
+    it('calls action with correct payload on button click', async () => {
       const action = vi.fn()
       const message = createMessage()
 
       wrapper = mount(Component, {
-        props: { required: 'test' },
         global: {
           provide: {
             [MessageContextKey as symbol]: {
@@ -378,42 +407,19 @@ describe('Component', () => {
         },
       })
 
-      const button = wrapper.find('button')
-      await button.trigger('click')
+      await wrapper.find('button').trigger('click')
 
-      expect(action).toHaveBeenCalledWith('Button clicked', expect.any(Object))
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('handles null/undefined props gracefully', () => {
-      const message = createMessage()
-      wrapper = mountComponent(message, {
-        required: 'test',
-        optional: undefined,
-      })
-
-      expect(wrapper.exists()).toBe(true)
-    })
-
-    it('handles empty arrays', () => {
-      const message = createMessage()
-      wrapper = mountComponent(message, {
-        required: 'test',
-        items: [],
-      })
-
-      expect(wrapper.findAll('[data-testid="item"]').length).toBe(0)
+      expect(action).toHaveBeenCalledWith('expected-payload', null, { label: 'Button Label' })
     })
   })
 
   describe('Accessibility', () => {
-    it('includes ARIA attributes', () => {
-      const message = createMessage()
+    it('provides correct ARIA label for screen readers', () => {
+      const message = createMessage({ text: 'Important message' })
       wrapper = mountComponent(message)
 
       const element = wrapper.find('[data-testid="component-name"]')
-      expect(element.attributes('role')).toBeDefined()
+      expect(element.attributes('aria-label')).toBe('Important message')
     })
   })
 })
@@ -1076,14 +1082,13 @@ Use this checklist before marking component complete:
 
 ### Testing
 - [ ] Test file created
-- [ ] All rendering scenarios tested
-- [ ] Props tested (required, optional, defaults)
-- [ ] User interactions tested
-- [ ] Context integration tested
-- [ ] Edge cases covered
-- [ ] Accessibility tested
+- [ ] **Tests verify behavior** (not just "exists" or "defined" checks)
+- [ ] **No CSS class existence tests** (brittle)
+- [ ] Config effects tested (settings change output)
+- [ ] User interactions tested (actions called with correct payloads)
+- [ ] Accessibility tested (ARIA values, not just presence)
+- [ ] Data-driven tests for repetitive cases (`it.each`)
 - [ ] All tests passing
-- [ ] Coverage equal to or better than React
 
 ### Documentation
 - [ ] Documentation file created
@@ -1115,7 +1120,8 @@ Use this checklist before marking component complete:
 - [ ] Uses existing composables
 - [ ] Code is readable and maintainable
 - [ ] No code duplication in production code (DRY)
-- [ ] **No `as any` type assertions** (use proper types or type guards)
+- [ ] **Public API types define clear contracts** (props, callbacks, exports)
+- [ ] `any` only used for acceptable cases (extensibility, pass-through, external lib gaps)
 - [ ] Tests are self-contained (repetition OK for clarity)
 - [ ] Comments where needed
 - [ ] TypeScript strict mode compliance

@@ -14,34 +14,37 @@ Vue 3 implementation of @cognigy/chat-components library for rendering chat mess
 
 ## Critical Rules
 
-### 1. NEVER Use `as any`
+### 1. TypeScript Typing Philosophy
 
-**`as any` is an antipattern.** It bypasses TypeScript's type safety and should be avoided and corrected.
+**Root types (`any`, `unknown`) indicate a design decision, not a solution.**
+
+Neither `any` nor `unknown` should be common. If you're reaching for root types frequently, something is wrong with your type design.
+
+**The `any` vs `unknown` debate is a distraction:**
+- `unknown` zealots miss that narrowing requires knowing types anyway (`if (typeof x === 'string')`)
+- This is the same work as defining the union type upfront
+- Don't use `unknown` as "safer any" - it just adds ceremony
+
+**Decision process:**
+1. **Can I define a proper type?** → Define it (interface, union, `Record<string, T>`)
+2. **Is this a public API?** → Must define it (this is your contract with consumers)
+3. **Is data genuinely dynamic/volatile?** → Use `any` with optional chaining (`data?.id`)
+4. **External library gap?** → Use `any` with a comment explaining why
 
 ```typescript
-// WRONG - bypasses type checking
-const data = response.data as any
-const id = (message as any).id
+// PUBLIC API: Must be typed (this is the contract)
+customIcon?: Component | string
+onAnalytics?: (event: string, data: AnalyticsEvent) => void
 
-// CORRECT - use proper types
-interface ApiResponse { user: { name: string } }
-const data = response.data as ApiResponse
+// EXTENSIBILITY: any OK for dynamic keys
+[key: string]: any  // i18n, user-defined keys
 
-// CORRECT - use type guards
-function hasId(msg: unknown): msg is { id: string } {
-  return typeof msg === 'object' && msg !== null && 'id' in msg
-}
-if (hasId(message)) {
-  const id = message.id  // Type-safe!
-}
-
-// CORRECT - extend incomplete external types
-interface IMessageWithId extends IMessage {
-  id?: string
-}
+// PASS-THROUGH: any OK, data flows to external system unchanged
+data?: Record<string, any> | null
 ```
 
-**When you find `as any`:** Create proper interfaces, add type guards, or document upstream type issues.
+**When `any` is acceptable:** Extensibility points, pass-through data, external library gaps
+**When `any` is NOT acceptable:** Public APIs, known shapes, convenience shortcuts
 
 ### 2. NEVER Destructure Props
 
@@ -155,7 +158,49 @@ const displayText = computed(() => message.text || props.customProp)
 </style>
 ```
 
-## Test Template
+## Testing Guidelines
+
+### Write Meaningful Tests
+
+A test should answer: **"What behavior can users expect with these inputs?"**
+
+**✅ Test these:**
+- Security (XSS, sanitization)
+- Config effects (settings change behavior)
+- Interactions (clicks invoke actions)
+- Accessibility (ARIA attributes)
+- Business logic (routing, formatting)
+
+**❌ Avoid these:**
+```typescript
+// Bad: Just checks "exists"
+expect(wrapper.exists()).toBe(true)
+
+// Bad: CSS class names (brittle)
+expect(wrapper.find('.some-class').exists()).toBe(true)
+
+// Bad: Prop is "defined" (proves nothing)
+expect(action).toBeDefined()
+
+// Bad: Repetitive identical tests
+it('renders JPEG', () => {})
+it('renders PNG', () => {})  // Same logic!
+```
+
+**✅ Better patterns:**
+```typescript
+// Good: Verifies actual behavior
+expect(wrapper.find('p').text()).toBe('')
+
+// Good: Tests interaction result
+await wrapper.find('button').trigger('click')
+expect(action).toHaveBeenCalledWith('payload')
+
+// Good: Data-driven for repetitive cases
+it.each([['image/jpeg'], ['image/png']])('renders %s', (mime) => {})
+```
+
+### Test Template
 
 ```typescript
 import { describe, it, expect, vi } from 'vitest'
@@ -187,14 +232,15 @@ describe('Component', () => {
     })
   }
 
-  it('renders message text', () => {
+  it('renders message text in paragraph', () => {
     const wrapper = mountComponent()
-    expect(wrapper.text()).toContain('Test')
+    expect(wrapper.find('p').text()).toContain('Test')
   })
 
-  it('handles missing text gracefully', () => {
-    const wrapper = mountComponent(createMessage({ text: '' }))
-    expect(wrapper.find('[data-testid="fallback"]').exists()).toBe(true)
+  it('applies config-based max width', () => {
+    const config = { settings: { layout: { botOutputMaxWidthPercentage: 80 } } }
+    const wrapper = mountComponent(createMessage(), config)
+    expect(wrapper.find('.chat-bubble').attributes('style')).toContain('max-width: 80%')
   })
 })
 ```
@@ -224,11 +270,13 @@ npm run type-check   # Type check
 
 ## Checklist Before Completion
 
-- [ ] **No `as any`** - use proper types or type guards
+- [ ] **Public API types define clear contracts** (props, callbacks, exports)
+- [ ] `any` only used for acceptable cases (extensibility, pass-through, external lib gaps)
 - [ ] Props not destructured
 - [ ] CSS modules imported with `useCssModule()`
 - [ ] Error cases handled with logging
 - [ ] Null/undefined checks at boundaries
-- [ ] Tests cover happy path and errors
+- [ ] **Tests verify behavior** (not just "exists" checks)
+- [ ] No CSS class existence tests
 - [ ] No silent failures
 - [ ] Simple, readable code

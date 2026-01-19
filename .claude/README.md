@@ -4,7 +4,26 @@ This directory contains reusable Claude configurations and skills.
 
 ## Files
 
-### 1. `skills/coding-philosophy.md`
+### 1. `commands/ncu.md`
+**NPM Check Updates slash command**
+
+A slash command to check for outdated npm packages and analyze upgrade risks.
+
+**Usage in Claude Code:**
+```
+/ncu              # List all available updates with analysis
+/ncu -u           # Update package.json (with confirmation)
+/ncu --doctor     # Check for breaking changes iteratively
+/ncu -f vite      # Check specific package only
+```
+
+The command will:
+1. Run `npx ncu` to list outdated packages
+2. Categorize updates by risk (patch/minor/major)
+3. Research breaking changes for major updates
+4. Provide recommendations for safe upgrade paths
+
+### 2. `skills/coding-philosophy.md`
 **Comprehensive coding philosophy skill** (15KB)
 
 A detailed skill that can be invoked in Claude Code to apply consistent coding standards.
@@ -19,12 +38,12 @@ Or reference it when reviewing code:
 Review this code according to the coding-philosophy skill.
 ```
 
-### 2. `agents/port-component.md`
+### 3. `agents/port-component.md`
 **Component porting agent** (30KB)
 
 Specialized agent for porting React components to Vue 3. See main README for usage.
 
-### 3. `custom-instructions.txt`
+### 4. `custom-instructions.txt`
 **Condensed version for account-wide settings** (2KB)
 
 A shorter version of the coding philosophy that fits in Claude's custom instructions.
@@ -110,6 +129,7 @@ cp /path/to/vue-version/.claude/skills/coding-philosophy.md /path/to/other-proje
 
 | File | Size | Use Case | Where to Use |
 |------|------|----------|--------------|
+| `commands/ncu.md` | 2KB | Check npm updates | Claude Code `/ncu` command |
 | `skills/coding-philosophy.md` | 15KB | Detailed reference with examples | Claude Code (local or global) |
 | `custom-instructions.txt` | 2KB | Concise principles | claude.ai account settings |
 | `agents/port-component.md` | 30KB | React→Vue porting | Claude Code (this project) |

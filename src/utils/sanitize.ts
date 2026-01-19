@@ -85,6 +85,7 @@ export function sanitizeHTMLWithConfig(
   }
 
   // Add hook for unknown elements
+  // Note: DOMPurify's hook callback types don't fully describe the node parameter
   DOMPurify.addHook('beforeSanitizeElements', (node: any) => {
     if (node instanceof HTMLUnknownElement) {
       const unClosedTag = `<${node.tagName.toLowerCase()}>${node.innerHTML}`

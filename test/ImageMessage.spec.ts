@@ -174,7 +174,6 @@ describe('ImageMessage', () => {
     const message = createImageMessage('https://example.com/image.jpg', 'Image')
     wrapper = mountImageMessage(message)
 
-    const imageContainer = wrapper.find('img').element.parentElement!
     await wrapper.trigger('click')
 
     // Lightbox should not be shown
