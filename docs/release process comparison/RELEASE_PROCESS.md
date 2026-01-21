@@ -66,9 +66,9 @@ Just merge your PR - everything else is automated.
 | Secret | Required | Purpose |
 |--------|----------|---------|
 | `GITHUB_TOKEN` | Built-in | Create releases, commit version bumps |
-| `COGNIGY_NPM_AUTH_CONFIG` | **Yes** | npm authentication (org-wide secret) |
+| `NPM_TOKEN` | **Yes** | npm authentication token |
 
-The `COGNIGY_NPM_AUTH_CONFIG` secret should already be available as an organization secret. It contains the npm auth token configuration that gets appended to `.npmrc`.
+The `NPM_TOKEN` secret must be configured in the repository settings. It should be an npm access token with publish permissions for the `@cognigy` scope.
 
 ## Consumer Installation
 

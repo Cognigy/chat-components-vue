@@ -50,6 +50,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
 
       # ----------------------------------------------------------------------
       # Configure Git
@@ -272,18 +273,12 @@ jobs:
       # ----------------------------------------------------------------------
       # Publish to npm
       # ----------------------------------------------------------------------
-      - name: Set npm registry
-        run: |
-          NPMRC_FILE=".npmrc"
-          if test -f "$NPMRC_FILE"; then
-            echo "" >> $NPMRC_FILE
-            echo "${{ secrets.COGNIGY_NPM_AUTH_CONFIG }}" >> $NPMRC_FILE
-          fi
-
       - name: Publish to npm
         run: |
-          npm publish
+          npm publish --access public
           echo "✅ Published to npm"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # ----------------------------------------------------------------------
       # Summary
