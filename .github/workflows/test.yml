@@ -1,0 +1,168 @@
+# =============================================================================
+# @cognigy/chat-components-vue - Test & Lint Workflow
+# =============================================================================
+# Runs automated tests, linting, and type checking on pull requests
+# Ensures code quality before merging to main
+# =============================================================================
+
+name: Test & Lint
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'plans/**'
+
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test, Lint & Type Check
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      # ----------------------------------------------------------------------
+      # Checkout repository
+      # ----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ----------------------------------------------------------------------
+      # Setup Node.js (match engines requirement)
+      # ----------------------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # ----------------------------------------------------------------------
+      # Install dependencies
+      # ----------------------------------------------------------------------
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing dependencies..."
+          npm ci
+          echo "✅ Dependencies installed"
+
+      # ----------------------------------------------------------------------
+      # Run linting
+      # ----------------------------------------------------------------------
+      - name: Lint
+        run: |
+          echo "🔍 Running ESLint..."
+          npm run lint
+          echo "✅ Lint passed"
+
+      # ----------------------------------------------------------------------
+      # Run type check
+      # ----------------------------------------------------------------------
+      - name: Type check
+        run: |
+          echo "🔍 Running TypeScript type check..."
+          npm run type-check
+          echo "✅ Type check passed"
+
+      # ----------------------------------------------------------------------
+      # Run tests
+      # ----------------------------------------------------------------------
+      - name: Run tests
+        id: test
+        run: |
+          echo "🧪 Running tests..."
+
+          # Run tests and capture output
+          npm test > test-output.txt 2>&1 || TEST_EXIT_CODE=$?
+
+          # Display test output
+          cat test-output.txt
+
+          # Check if tests failed
+          if [ ! -z "$TEST_EXIT_CODE" ] && [ "$TEST_EXIT_CODE" != "0" ]; then
+            echo "test_status=failed" >> $GITHUB_OUTPUT
+            echo "❌ Tests failed with exit code $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
+          else
+            echo "test_status=passed" >> $GITHUB_OUTPUT
+            echo "✅ All tests passed"
+          fi
+
+      # ----------------------------------------------------------------------
+      # Run build to ensure it compiles
+      # ----------------------------------------------------------------------
+      - name: Build
+        run: |
+          echo "🔨 Running build..."
+          npm run build
+          echo "✅ Build completed"
+
+      # ----------------------------------------------------------------------
+      # Extract test statistics
+      # ----------------------------------------------------------------------
+      - name: Extract test statistics
+        id: stats
+        if: always()
+        run: |
+          echo "📈 Extracting test statistics..."
+
+          if [ -f "test-output.txt" ]; then
+            # Extract test counts (vitest format)
+            TEST_FILES=$(grep -oP 'Test Files\s+\K\d+(?=\s+passed)' test-output.txt | tail -1 || echo "0")
+            TOTAL_TESTS=$(grep -oP 'Tests\s+\K\d+(?=\s+passed)' test-output.txt | tail -1 || echo "0")
+            DURATION=$(grep -oP 'Duration\s+\K[\d.]+s' test-output.txt | tail -1 || echo "0s")
+
+            echo "test_files=$TEST_FILES" >> $GITHUB_OUTPUT
+            echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+            echo "duration=$DURATION" >> $GITHUB_OUTPUT
+
+            echo "📊 Tests: $TOTAL_TESTS passed in $TEST_FILES files (Duration: $DURATION)"
+          fi
+
+      # ----------------------------------------------------------------------
+      # Generate Summary
+      # ----------------------------------------------------------------------
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "# 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          TEST_STATUS="${{ steps.test.outputs.test_status }}"
+          if [ "$TEST_STATUS" == "passed" ]; then
+            echo "✅ **All checks passed!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Tests failed. Please review the logs.**" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "## 📈 Test Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Test Files** | ${{ steps.stats.outputs.test_files }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total Tests** | ${{ steps.stats.outputs.total_tests }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Duration** | ${{ steps.stats.outputs.duration }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Node Version** | 22.x |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "## 📝 PR Details" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.head_ref }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Author** | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "🤖 *Automated testing by GitHub Actions*" >> $GITHUB_STEP_SUMMARY

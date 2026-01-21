@@ -1,252 +1,140 @@
 # @cognigy/chat-components-vue
 
-Vue 3 version of `@cognigy/chat-components`.
+[![npm version](https://img.shields.io/npm/v/@cognigy/chat-components-vue.svg)](https://www.npmjs.com/package/@cognigy/chat-components-vue)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D22.12.0-brightgreen.svg)](https://nodejs.org/)
+[![Vue 3](https://img.shields.io/badge/vue-3.x-42b883.svg)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
-## 🤖 Automated Component Porting
+Vue 3 chat message components for building conversational interfaces. A Vue port of [@cognigy/chat-components](https://github.com/Cognigy/chat-components).
 
-This repository includes a specialized Claude Code agent that automatically ports React components from the original @cognigy/chat-components repository to Vue 3.
+## Features
 
-### Quick Start
+- **Data-driven rendering** - Single `Message` component handles all message types automatically
+- **Rich message types** - Text, images, video, audio, galleries, lists, buttons, and more
+- **Plugin system** - Extend with custom message types
+- **TypeScript** - Full type safety with exported types
+- **Accessible** - ARIA attributes and keyboard navigation
+- **Themeable** - CSS variables for customization
 
-```bash
-# In Claude Code, use the port-component agent:
-/port-component <path-to-react-component>
-```
-
-**Example:**
-```bash
-# If React repo is in an adjacent directory:
-/port-component ../chat-components/src/messages/RatingMessage.tsx
-
-# Or with absolute path:
-/port-component /Users/dev/chat-components/src/messages/RatingMessage.tsx
-```
-
-### What the Agent Does
-
-The agent automatically:
-1. ✅ Reads the React component and its tests
-2. ✅ Converts to Vue 3 using Composition API
-3. ✅ Creates comprehensive tests (Vitest + Vue Test Utils)
-4. ✅ Generates complete documentation
-5. ✅ Updates all tracking files (README, PROGRESS, docs)
-6. ✅ Verifies all tests pass
-
-### Agent Features
-
-- **Automatic conversion**: React hooks → Vue composables, JSX → Vue templates, CSS modules → Vue CSS modules
-- **Pattern matching**: Understands both React and Vue patterns
-- **Comprehensive testing**: Generates tests with equal or better coverage than React version
-- **Full documentation**: Creates complete API docs with examples
-- **Quality checks**: Ensures all tests pass before completion
-
-### When to Use the Agent
-
-Use the port-component agent when:
-- A new component is added to the React repository
-- An existing React component is significantly updated
-- You need to port multiple components efficiently
-- You want consistent Vue 3 patterns across components
-
-### Manual Porting Alternative
-
-If you prefer to port components manually, follow the guidelines in:
-- `CLAUDE.md` - Core development procedures
-- `.claude/agents/port-component.md` - Detailed conversion patterns
-
-### Agent Documentation
-
-See `.claude/agents/port-component.md` for:
-- Complete React → Vue conversion tables
-- Vue 3 component templates
-- Testing patterns
-- Common pitfalls and solutions
-- Quality checklists
-
-## Project Structure
-
-This is a Vue 3 port of the React-based chat components library. It maintains the same data-driven architecture and matcher system, but uses Vue 3 composition API patterns.
-
-```
-vue-version/
-├── src/
-│   ├── components/          # Vue components
-│   │   ├── Message.vue      # Main message renderer
-│   │   ├── messages/        # Message type components
-│   │   │   ├── TextMessage.vue
-│   │   │   ├── Gallery.vue
-│   │   │   ├── ImageMessage.vue
-│   │   │   └── [other types]/
-│   │   └── common/          # Shared UI components
-│   │       ├── ActionButtons.vue
-│   │       ├── TypingIndicator.vue
-│   │       ├── ChatEvent.vue
-│   │       └── Typography.vue
-│   ├── composables/         # Vue composables (hooks)
-│   │   ├── useMessageContext.ts
-│   │   ├── useSanitize.ts
-│   │   └── useCollation.ts
-│   ├── types/               # TypeScript type definitions
-│   │   └── index.ts
-│   ├── utils/               # Utilities
-│   │   ├── matcher.ts       # Message type matching system
-│   │   ├── sanitize.ts
-│   │   └── helpers.ts
-│   └── index.ts             # Public API exports
-├── test/                    # Tests
-├── package.json
-├── vite.config.ts
-└── tsconfig.json
-```
-
-## Architecture
-
-### Data-Driven Rendering (Same as React Version)
-
-The Vue version maintains the same data-driven architecture:
-- Single `Message.vue` component handles all message types
-- Matcher system determines which component to render based on data structure
-- Backend sends message data → Frontend renders appropriate UI
-
-### Key Differences from React Version
-
-1. **Composition API** instead of React hooks
-2. **Provide/Inject** instead of React Context
-3. **Vue directives** instead of JSX patterns
-4. **Reactive refs** instead of useState
-5. **Computed properties** instead of useMemo
-6. **Watchers** for side effects instead of useEffect
-
-### Matcher System
-
-The matcher system works identically to the React version:
-
-```typescript
-// Same match rules as React version
-const matchRules = [
-  {
-    name: 'Gallery',
-    match: (msg) => msg.data?._cognigy?._webchat?.message?.attachment?.payload?.template_type === 'generic',
-    component: Gallery
-  },
-  // ... more rules
-]
-```
-
-## Development
+## Installation
 
 ```bash
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
-
-# Run tests
-npm run test
-
-# Build library
-npm run build
+npm install @cognigy/chat-components-vue
 ```
 
-## Migration Status
-
-This is a work in progress. Component parity tracking:
-
-### Core Components
-- [x] Message.vue ✅ (main renderer)
-- [x] ActionButtons.vue ✅
-- [x] Typography.vue ✅
-- [x] TypingIndicator.vue ✅
-- [x] ChatEvent.vue ✅
-- [x] ChatBubble.vue ✅
-
-### Message Types
-- [x] TextMessage.vue ✅
-- [x] ImageMessage.vue ✅
-- [x] VideoMessage.vue ✅
-- [x] AudioMessage.vue ✅
-- [x] TextWithButtons.vue ✅
-- [x] Gallery.vue ✅
-- [x] List.vue ✅
-- [x] FileMessage.vue ✅
-- [x] DatePicker.vue ✅
-- [x] AdaptiveCard.vue ✅
-
-### Composables
-- [x] useMessageContext ✅
-- [x] useSanitize ✅
-- [ ] useCollation
-- [ ] useChannelPayload
-
-### Utilities
-- [x] matcher.ts ✅
-- [x] sanitize.ts ✅
-- [x] helpers.ts ✅
-
-## Usage
-
-Once complete, usage will be similar to React version:
+## Quick Start
 
 ```vue
 <template>
-  <Message
-    :message="message"
-    :action="handleAction"
-    :config="config"
-  />
+  <div class="chat-container">
+    <Message
+      v-for="msg in messages"
+      :key="msg.traceId"
+      :message="msg"
+      :config="chatConfig"
+      :action="handleAction"
+    />
+    <TypingIndicator v-if="isTyping" />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { Message } from '@cognigy/chat-components-vue'
+import { ref } from 'vue'
+import {
+  Message,
+  TypingIndicator,
+  type IMessage,
+  type ChatConfig
+} from '@cognigy/chat-components-vue'
 
-const message = {
-  text: "Hello!",
-  source: "bot",
-  timestamp: Date.now().toString()
+// Import styles
+import '@cognigy/chat-components-vue/style.css'
+
+const messages = ref<IMessage[]>([])
+const isTyping = ref(false)
+
+const chatConfig: ChatConfig = {
+  settings: {
+    layout: {
+      botOutputMaxWidthPercentage: 80,
+    },
+  },
 }
 
-const handleAction = (text: string, data: any) => {
-  console.log('Action:', text, data)
+const handleAction = (text: string, data: Record<string, any> | null) => {
+  console.log('User action:', text, data)
 }
 </script>
 ```
 
-## Contributing
+## Components
 
-### Porting Components from React
+### Message Renderer
 
-**Option 1: Automated (Recommended)**
+| Component | Description |
+|-----------|-------------|
+| [Message](./docs/components/message.md) | Main renderer - automatically routes to correct message type |
 
-Use the port-component agent in Claude Code:
+### Message Types
 
-```bash
-/port-component <path-to-react-component>
+| Component | Description |
+|-----------|-------------|
+| [TextMessage](./docs/components/text-message.md) | Plain text with HTML/Markdown support |
+| [ImageMessage](./docs/components/image-message.md) | Images with lightbox |
+| [VideoMessage](./docs/components/video-message.md) | Video player (direct, YouTube, Vimeo) |
+| [AudioMessage](./docs/components/audio-message.md) | Audio player |
+| [TextWithButtons](./docs/components/text-with-buttons.md) | Text with action buttons or quick replies |
+| [Gallery](./docs/components/gallery.md) | Horizontal carousel of cards |
+| [List](./docs/components/list.md) | Vertical list with items and actions |
+| [FileMessage](./docs/components/file-message.md) | File attachments with download |
+| [DatePicker](./docs/components/date-picker.md) | Date selection display |
+| [AdaptiveCard](./docs/components/adaptive-card.md) | Microsoft Adaptive Cards |
+
+### UI Components
+
+| Component | Description |
+|-----------|-------------|
+| [TypingIndicator](./docs/components/typing-indicator.md) | Animated typing dots |
+| [ChatBubble](./docs/components/chat-bubble.md) | Message bubble wrapper |
+| [ActionButtons](./docs/components/action-buttons.md) | Button group for actions |
+| [ChatEvent](./docs/components/chat-event.md) | System event notifications |
+| [Typography](./docs/components/typography.md) | Text with style variants |
+
+## Custom Message Types
+
+Extend with your own message types using plugins:
+
+```vue
+<script setup lang="ts">
+import { Message, type MessagePlugin } from '@cognigy/chat-components-vue'
+import CustomCard from './CustomCard.vue'
+
+const plugins: MessagePlugin[] = [
+  {
+    name: 'CustomCard',
+    match: (message) => message.data?.customType === 'card',
+    component: CustomCard,
+  }
+]
+</script>
+
+<template>
+  <Message :message="msg" :plugins="plugins" :action="handleAction" />
+</template>
 ```
 
-The agent will handle the entire conversion process automatically.
+## Documentation
 
-**Option 2: Manual Porting**
+- [Component API Reference](./docs/components/README.md) - Props, events, and usage
+- [Message Data Structures](./docs/data-structures/README.md) - Backend integration guide
+- [Consumer Guide](./docs/CONSUMER_GUIDE.md) - Installation and CI/CD setup
 
-When porting components manually:
+## Requirements
 
-1. Maintain the same data structures and prop interfaces
-2. Use Vue 3 Composition API patterns
-3. Follow the coding guidelines in CLAUDE.md
-4. Ensure error handling is explicit and visible
-5. Keep code simple and maintainable ("ranch-like")
-6. Write comprehensive tests for each component
-7. Create complete documentation
-8. Update all tracking files
+- Vue 3.4+
+- Node.js 22.12+
 
-See `.claude/agents/port-component.md` for detailed conversion patterns and examples.
+## License
 
-### Development Guidelines
-
-- Follow the **5-step procedure** for all components (Implementation → Testing → Documentation → Tracking → Verification)
-- Use established patterns from existing components
-- Prioritize clarity and maintainability over cleverness
-- Ensure all tests pass before marking work complete
-- Keep documentation in sync with code changes
-
-See `CLAUDE.md` for complete development guidelines.
+MIT

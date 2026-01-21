@@ -33,6 +33,8 @@ export { default as AdaptiveCard } from './components/messages/AdaptiveCard.vue'
 export { useMessageContext, useMessageContextOptional, provideMessageContext, MessageContextKey } from './composables/useMessageContext'
 export { useSanitize } from './composables/useSanitize'
 export { useImageContext, provideImageContext, ImageContextKey } from './composables/useImageContext'
+export { useChannelPayload, type UseChannelPayloadReturn } from './composables/useChannelPayload'
+export { useCollation, type UseCollationReturn, type CollatedMessage } from './composables/useCollation'
 
 // SVG Icons
 export { DownloadIcon, CloseIcon, VideoPlayIcon, AudioPlayIcon, AudioPauseIcon, ArrowBackIcon, LinkIcon } from './assets/svg'
@@ -62,6 +64,7 @@ export type {
   IWebchatVideoAttachment,
   IUploadFileAttachmentData,
   IDatePickerData,
+  IWebchatChannelPayload,
 } from './types'
 
 export type { TagVariant } from './components/common/Typography.vue'

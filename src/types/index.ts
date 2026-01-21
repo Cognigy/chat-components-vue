@@ -327,3 +327,29 @@ export type {
   IWebchatVideoAttachment,
   IUploadFileAttachmentData,
 } from '@cognigy/socket-client'
+
+// =============================================================================
+// Webchat Channel Payload Types
+// =============================================================================
+
+// Import the types we need for the interface
+import type {
+  IWebchatQuickReply as QuickReply,
+  IWebchatTemplateAttachment as TemplateAttachment,
+  IWebchatAudioAttachment as AudioAttachment,
+  IWebchatImageAttachment as ImageAttachment,
+  IWebchatVideoAttachment as VideoAttachment,
+} from '@cognigy/socket-client'
+
+/**
+ * Webchat channel payload structure
+ * This is the shape of _webchat, _facebook, or _defaultPreview in message.data._cognigy
+ */
+export interface IWebchatChannelPayload {
+  message?: {
+    text?: string
+    quick_replies?: QuickReply[]
+    attachment?: TemplateAttachment | AudioAttachment | ImageAttachment | VideoAttachment
+  }
+  adaptiveCard?: unknown
+}

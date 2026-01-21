@@ -1,0 +1,311 @@
+# =============================================================================
+# @cognigy/chat-components-vue - Automatic Version Bumping
+# =============================================================================
+# Automatically increments version when PRs are merged to main:
+# - Minor version bump (0.x.0 → 0.(x+1).0) for regular PRs
+# - Patch version bump (0.x.y → 0.x.(y+1)) for Dependabot PRs
+#
+# Version scheme: 0.x.x (pre-1.0 semver)
+# =============================================================================
+
+name: Auto Version Bump
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'CHANGELOG.md'
+      - '**.md'
+      - '.github/workflows/**'
+      - 'plans/**'
+
+jobs:
+  version-bump:
+    name: Bump Version
+    runs-on: ubuntu-latest
+
+    # Don't run on commits made by this workflow
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, 'chore: bump version')"
+
+    permissions:
+      contents: write
+
+    steps:
+      # ----------------------------------------------------------------------
+      # Checkout with full history for proper git operations
+      # ----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ----------------------------------------------------------------------
+      # Setup Node.js (match engines requirement)
+      # ----------------------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      # ----------------------------------------------------------------------
+      # Configure Git
+      # ----------------------------------------------------------------------
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ----------------------------------------------------------------------
+      # Determine version bump type
+      # ----------------------------------------------------------------------
+      - name: Determine bump type
+        id: bump-type
+        run: |
+          # Check if this is a Dependabot commit
+          COMMIT_AUTHOR="${{ github.event.head_commit.author.username }}"
+          COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
+
+          echo "Commit author: $COMMIT_AUTHOR"
+          echo "Commit message: $COMMIT_MESSAGE"
+
+          if [[ "$COMMIT_AUTHOR" == "dependabot[bot]" ]] || [[ "$COMMIT_MESSAGE" == *"dependabot"* ]] || [[ "$COMMIT_MESSAGE" == *"Bump "* ]]; then
+            echo "bump_type=patch" >> $GITHUB_OUTPUT
+            echo "Detected Dependabot commit - will bump PATCH version"
+          else
+            echo "bump_type=minor" >> $GITHUB_OUTPUT
+            echo "Regular commit - will bump MINOR version"
+          fi
+
+      # ----------------------------------------------------------------------
+      # Get current version
+      # ----------------------------------------------------------------------
+      - name: Get current version
+        id: current-version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+      # ----------------------------------------------------------------------
+      # Calculate new version
+      # ----------------------------------------------------------------------
+      - name: Calculate new version
+        id: new-version
+        run: |
+          CURRENT="${{ steps.current-version.outputs.current_version }}"
+          BUMP_TYPE="${{ steps.bump-type.outputs.bump_type }}"
+
+          # Parse version components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          # Handle pre-release suffixes (e.g., 0.1.0-beta.1)
+          PATCH_NUM="${PATCH%%-*}"
+
+          if [[ "$BUMP_TYPE" == "patch" ]]; then
+            NEW_PATCH=$((PATCH_NUM + 1))
+            NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          else
+            NEW_MINOR=$((MINOR + 1))
+            NEW_VERSION="$MAJOR.$NEW_MINOR.0"
+          fi
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION (bump type: $BUMP_TYPE)"
+
+      # ----------------------------------------------------------------------
+      # Update package.json version
+      # ----------------------------------------------------------------------
+      - name: Update package.json version
+        run: |
+          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+
+          # Update version in package.json using npm
+          npm version $NEW_VERSION --no-git-tag-version --allow-same-version
+
+          echo "Updated package.json to version $NEW_VERSION"
+
+      # ----------------------------------------------------------------------
+      # Update CHANGELOG.md
+      # ----------------------------------------------------------------------
+      - name: Update CHANGELOG
+        id: update-changelog
+        run: |
+          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+          CURRENT_DATE=$(date +%Y-%m-%d)
+          BUMP_TYPE="${{ steps.bump-type.outputs.bump_type }}"
+
+          # Check if CHANGELOG.md exists
+          if [ ! -f "CHANGELOG.md" ]; then
+            echo "⚠️  CHANGELOG.md not found - creating new one"
+            cat > CHANGELOG.md << 'HEREDOC'
+          # Changelog
+
+          All notable changes to this project will be documented in this file.
+
+          HEREDOC
+          fi
+
+          # Create changelog entry based on bump type
+          if [[ "$BUMP_TYPE" == "patch" ]]; then
+            CHANGE_NOTE="- Dependency updates"
+          else
+            CHANGE_NOTE="- See commit history for changes"
+          fi
+
+          # Prepend new version entry after the header
+          TEMP_FILE=$(mktemp)
+          {
+            head -n 4 CHANGELOG.md
+            echo ""
+            echo "## [$NEW_VERSION] - $CURRENT_DATE"
+            echo ""
+            echo "### Changed"
+            echo "$CHANGE_NOTE"
+            echo ""
+            tail -n +5 CHANGELOG.md
+          } > "$TEMP_FILE"
+          mv "$TEMP_FILE" CHANGELOG.md
+
+          echo "✅ Updated CHANGELOG.md with version $NEW_VERSION"
+          echo "changelog_updated=true" >> $GITHUB_OUTPUT
+
+      # ----------------------------------------------------------------------
+      # Commit and push changes
+      # ----------------------------------------------------------------------
+      - name: Commit version bump
+        run: |
+          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+          BUMP_TYPE="${{ steps.bump-type.outputs.bump_type }}"
+
+          git add package.json package-lock.json CHANGELOG.md 2>/dev/null || git add package.json CHANGELOG.md
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "chore: bump version to $NEW_VERSION ($BUMP_TYPE) [skip ci]"
+          git push origin main
+
+          echo "Committed and pushed version $NEW_VERSION"
+
+      # ----------------------------------------------------------------------
+      # Create git tag
+      # ----------------------------------------------------------------------
+      - name: Create version tag
+        run: |
+          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+
+          # Create annotated tag
+          git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+
+          echo "Created and pushed tag v$NEW_VERSION"
+
+      # ----------------------------------------------------------------------
+      # Generate Release Notes
+      # ----------------------------------------------------------------------
+      - name: Generate release notes
+        id: generate-notes
+        run: |
+          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+          PREVIOUS_VERSION="${{ steps.current-version.outputs.current_version }}"
+          BUMP_TYPE="${{ steps.bump-type.outputs.bump_type }}"
+
+          PREVIOUS_TAG="v$PREVIOUS_VERSION"
+
+          # Check if previous tag exists
+          if ! git rev-parse "$PREVIOUS_TAG" >/dev/null 2>&1; then
+            echo "⚠️  Previous tag $PREVIOUS_TAG not found, using initial commit"
+            PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+
+          # Generate commit log
+          COMMIT_LOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || echo "- Initial release")
+
+          # Build release notes
+          cat > release-notes.md << EOF
+          ## Release v$NEW_VERSION
+
+          **Release Type:** $(echo $BUMP_TYPE | tr '[:lower:]' '[:upper:]')
+          **Date:** $(date +%Y-%m-%d)
+
+          ### Changes
+
+          $COMMIT_LOG
+
+          ---
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...v${NEW_VERSION}
+          EOF
+
+          echo "✅ Generated release notes"
+
+      # ----------------------------------------------------------------------
+      # Create GitHub Release
+      # ----------------------------------------------------------------------
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+
+          gh release create "v$NEW_VERSION" \
+            --title "v$NEW_VERSION" \
+            --notes-file release-notes.md
+
+          echo "✅ Created GitHub release v$NEW_VERSION"
+
+      # ----------------------------------------------------------------------
+      # Install dependencies and build
+      # ----------------------------------------------------------------------
+      - name: Install dependencies and build
+        run: |
+          npm ci
+          npm run build
+
+      # ----------------------------------------------------------------------
+      # Publish to npm
+      # ----------------------------------------------------------------------
+      - name: Publish to npm
+        run: |
+          npm publish --access public
+          echo "✅ Published to npm"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ----------------------------------------------------------------------
+      # Summary
+      # ----------------------------------------------------------------------
+      - name: Summary
+        if: always()
+        run: |
+          echo "# 🚀 Version Bump Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Version Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Previous Version** | \`${{ steps.current-version.outputs.current_version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **New Version** | \`${{ steps.new-version.outputs.new_version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Bump Type** | \`${{ steps.bump-type.outputs.bump_type }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tag** | \`v${{ steps.new-version.outputs.new_version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📦 Published To" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- npm: \`npm install @cognigy/chat-components-vue\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔗 Links" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/v${{ steps.new-version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [npm Package](https://www.npmjs.com/package/@cognigy/chat-components-vue)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Compare Changes](https://github.com/${{ github.repository }}/compare/v${{ steps.current-version.outputs.current_version }}...v${{ steps.new-version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "🤖 *Automated version bump by GitHub Actions*" >> $GITHUB_STEP_SUMMARY
