@@ -3,15 +3,43 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Vue 3 version of @cognigy/chat-components",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cognigy/chat-components-vue.git"
+  },
+  "homepage": "https://github.com/Cognigy/chat-components-vue#readme",
+  "bugs": {
+    "url": "https://github.com/Cognigy/chat-components-vue/issues"
+  },
+  "keywords": [
+    "vue",
+    "vue3",
+    "chat",
+    "components",
+    "cognigy",
+    "webchat",
+    "messaging"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
   "main": "./dist/chat-components-vue.js",
   "module": "./dist/chat-components-vue.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/chat-components-vue.js",
-      "types": "./dist/index.d.ts"
-    }
+      "default": "./dist/chat-components-vue.js"
+    },
+    "./style.css": "./dist/chat-components-vue.css",
+    "./dist/*": "./dist/*"
   },
+  "sideEffects": [
+    "**/*.css"
+  ],
   "files": [
     "dist/**",
     "src/**"
@@ -23,7 +51,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "lint": "eslint ."
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "type-check": "vue-tsc --noEmit",
+    "prepare": "npm run build"
   },
   "peerDependencies": {
     "vue": "^3.4.0"
@@ -41,15 +72,17 @@
   "devDependencies": {
     "@types/dompurify": "^3.0.5",
     "@types/markdown-it": "^14.1.2",
+    "@types/node": "^25.0.9",
     "@vitejs/plugin-vue": "^6.0.0",
+    "@vitest/coverage-v8": "^4.0.17",
     "@vue/test-utils": "^2.4.0",
     "eslint": "^9.0.0",
     "eslint-plugin-vue": "^10.7.0",
     "globals": "^16.3.0",
     "jsdom": "^27.0.0",
-    "typescript-eslint": "^8.35.1",
     "npm-check-updates": "^19.3.1",
     "typescript": "^5.9.0",
+    "typescript-eslint": "^8.35.1",
     "vite": "^7.0.0",
     "vite-plugin-dts": "^4.2.0",
     "vitest": "^4.0.0",
