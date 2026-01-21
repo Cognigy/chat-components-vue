@@ -16,6 +16,15 @@ on:
       - 'docs/**'
       - 'plans/**'
 
+  # Run on pushes to PR branches (any branch except main)
+  push:
+    branches-ignore:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'plans/**'
+
   # Allow manual triggering
   workflow_dispatch:
 
