@@ -5,8 +5,10 @@
   - Create a custom message component
   - Register it as a plugin
   - Match messages based on data structure
--->
 
+  Note: This example intentionally defines multiple components to demonstrate
+  how to create custom plugins inline. In production, split into separate files.
+-->
 <template>
   <div :class="$style.container">
     <Message

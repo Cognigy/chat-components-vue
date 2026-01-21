@@ -17,7 +17,7 @@
         :message="msg"
         :config="chatConfig"
         :action="handleAction"
-        :onEmitAnalytics="handleAnalytics"
+        :on-emit-analytics="handleAnalytics"
       />
 
       <TypingIndicator v-if="isTyping" />
@@ -29,8 +29,10 @@
         type="text"
         placeholder="Type a message..."
         @keyup.enter="sendMessage"
-      />
-      <button @click="sendMessage">Send</button>
+      >
+      <button @click="sendMessage">
+        Send
+      </button>
     </div>
   </div>
 </template>

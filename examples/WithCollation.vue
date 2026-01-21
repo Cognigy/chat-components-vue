@@ -11,7 +11,10 @@
   <div :class="$style.container">
     <div :class="$style.controls">
       <label>
-        <input v-model="collationEnabled" type="checkbox" />
+        <input
+          v-model="collationEnabled"
+          type="checkbox"
+        >
         Enable stream collation
       </label>
       <span :class="$style.stats">
@@ -33,7 +36,9 @@
       <button @click="simulateStreamedResponse">
         Simulate Streamed Response
       </button>
-      <button @click="resetMessages">Reset</button>
+      <button @click="resetMessages">
+        Reset
+      </button>
     </div>
   </div>
 </template>

@@ -75,25 +75,25 @@ export function useChannelPayload(
 
   const hasPayload = computed(() => payload.value !== undefined)
 
-  const message_ = computed(() => payload.value?.message)
+  const payloadMessage = computed(() => payload.value?.message)
 
   const hasQuickReplies = computed(() => {
-    const quickReplies = message_.value?.quick_replies
+    const quickReplies = payloadMessage.value?.quick_replies
     return Array.isArray(quickReplies) && quickReplies.length > 0
   })
 
   const hasAttachment = computed(() => {
-    return message_.value?.attachment !== undefined
+    return payloadMessage.value?.attachment !== undefined
   })
 
   const attachmentType = computed(() => {
-    return message_.value?.attachment?.type
+    return payloadMessage.value?.attachment?.type
   })
 
   return {
     payload,
     hasPayload,
-    message: message_,
+    message: payloadMessage,
     hasQuickReplies,
     hasAttachment,
     attachmentType,

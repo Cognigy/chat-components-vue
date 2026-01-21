@@ -1,5 +1,5 @@
 <!--
-  Theming.vue - CSS customization example
+  ThemingExample.vue - CSS customization example
 
   This example shows how to:
   - Override CSS variables for theming
@@ -11,14 +11,20 @@
   <div :class="[$style.container, isDarkMode && $style.dark]">
     <div :class="$style.controls">
       <label>
-        <input v-model="isDarkMode" type="checkbox" />
+        <input
+          v-model="isDarkMode"
+          type="checkbox"
+        >
         Dark Mode
       </label>
 
       <div :class="$style.colorPicker">
         <label>
           Primary Color:
-          <input v-model="primaryColor" type="color" />
+          <input
+            v-model="primaryColor"
+            type="color"
+          >
         </label>
       </div>
     </div>
