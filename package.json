@@ -61,7 +61,7 @@
   },
   "dependencies": {
     "@braintree/sanitize-url": "^7.1.1",
-    "@cognigy/socket-client": "5.0.0-beta.20",
+    "@cognigy/socket-client": "5.0.0-beta.25",
     "@fontsource/figtree": "5.2.10",
     "dompurify": "^3.0.11",
     "flatpickr": "^4.6.13",
