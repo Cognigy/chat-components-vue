@@ -1,0 +1,167 @@
+# =============================================================================
+# @cognigy/chat-components-vue - Publish Release
+# =============================================================================
+# Triggered when a version tag is pushed (v*).
+# Builds the package, creates a GitHub Release, and publishes to npm.
+# =============================================================================
+
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      # ----------------------------------------------------------------------
+      # Checkout the tagged commit
+      # ----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ----------------------------------------------------------------------
+      # Setup Node.js with npm registry
+      # ----------------------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      # ----------------------------------------------------------------------
+      # Get version information
+      # ----------------------------------------------------------------------
+      - name: Get version info
+        id: version
+        run: |
+          # Extract version from tag (v0.2.0 -> 0.2.0)
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+
+          echo "Tag version: $TAG_VERSION"
+          echo "Package version: $PACKAGE_VERSION"
+
+          # Verify tag matches package.json version
+          if [[ "$TAG_VERSION" != "$PACKAGE_VERSION" ]]; then
+            echo "::warning::Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)"
+          fi
+
+      # ----------------------------------------------------------------------
+      # Install dependencies
+      # ----------------------------------------------------------------------
+      - name: Install dependencies
+        run: npm ci
+
+      # ----------------------------------------------------------------------
+      # Build the package
+      # ----------------------------------------------------------------------
+      - name: Build
+        run: npm run build
+
+      # ----------------------------------------------------------------------
+      # Generate release notes
+      # ----------------------------------------------------------------------
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${{ steps.version.outputs.tag_version }}"
+
+          # Find previous tag
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -v "$TAG" | head -n 1)
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "No previous tag found, using initial commit"
+            PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+
+          echo "Previous tag: $PREVIOUS_TAG"
+
+          # Generate commit log
+          COMMIT_LOG=$(git log ${PREVIOUS_TAG}..${TAG} --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || echo "- Initial release")
+
+          # Build release notes
+          cat > release-notes.md << EOF
+          ## What's Changed
+
+          $COMMIT_LOG
+
+          ---
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${TAG}
+
+          ## Installation
+
+          \`\`\`bash
+          npm install @cognigy/chat-components-vue@$VERSION
+          \`\`\`
+          EOF
+
+          echo "Generated release notes"
+
+      # ----------------------------------------------------------------------
+      # Create GitHub Release
+      # ----------------------------------------------------------------------
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file release-notes.md
+
+          echo "Created GitHub release: $TAG"
+
+      # ----------------------------------------------------------------------
+      # Publish to npm
+      # ----------------------------------------------------------------------
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ----------------------------------------------------------------------
+      # Summary
+      # ----------------------------------------------------------------------
+      - name: Summary
+        if: always()
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${{ steps.version.outputs.tag_version }}"
+
+          echo "# Release Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Version Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | \`$VERSION\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tag** | \`$TAG\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Published To" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **npm:** \`npm install @cognigy/chat-components-vue@$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Links" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/$TAG)" >> $GITHUB_STEP_SUMMARY
+          echo "- [npm Package](https://www.npmjs.com/package/@cognigy/chat-components-vue)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*Automated by GitHub Actions*" >> $GITHUB_STEP_SUMMARY

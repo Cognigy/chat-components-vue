@@ -2,6 +2,7 @@
   <article
     v-if="matchedComponents.length > 0"
     :class="rootClasses"
+    :style="cssVariableStyle"
     :data-message-id="dataMessageId"
   >
     <component
@@ -23,6 +24,7 @@
 <script setup lang="ts">
 import { computed, useCssModule, type Component } from 'vue'
 import { match } from '../utils/matcher'
+import { configColorsToCssVariables } from '../utils/theme'
 import { provideMessageContext } from '../composables/useMessageContext'
 import { getMessageId, isMessagePlugin } from '../types'
 import type { MessageProps } from '../types'
@@ -107,6 +109,11 @@ const rootClasses = computed(() => {
     props.message.source === 'user' && $style.user,
     props.message.source === 'agent' && $style.agent,
   ].filter(Boolean)
+})
+
+// CSS variable injection from config colors
+const cssVariableStyle = computed(() => {
+  return configColorsToCssVariables(props.config?.settings?.colors)
 })
 </script>
 
