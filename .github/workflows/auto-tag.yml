@@ -15,18 +15,26 @@ on:
     types: [closed]
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to tag (e.g., v0.1.0)'
+        required: true
+        type: string
 
 jobs:
   create-tag:
     name: Create Release Tag
     runs-on: ubuntu-latest
 
-    # Only run when:
-    # 1. PR was actually merged (not just closed)
-    # 2. PR title matches release pattern
-    if: |
-      github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.title, 'chore: release v')
+    # Run when:
+    # 1. Manual trigger with version input, OR
+    # 2. PR was merged with release title
+    if: >-
+      github.event_name == 'workflow_dispatch' || (
+        github.event.pull_request.merged == true &&
+        startsWith(github.event.pull_request.title, 'chore: release v')
+      )
 
     permissions:
       contents: write
@@ -55,11 +63,16 @@ jobs:
       - name: Extract version and create tag
         id: create-tag
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          echo "PR Title: $PR_TITLE"
-
-          # Extract version from PR title: "chore: release v0.2.0" → "v0.2.0"
-          VERSION=$(echo "$PR_TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          # Get version from manual input or PR title
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "Manual trigger with version: $VERSION"
+          else
+            PR_TITLE="${{ github.event.pull_request.title }}"
+            echo "PR Title: $PR_TITLE"
+            # Extract version from PR title: "chore: release v0.2.0" → "v0.2.0"
+            VERSION=$(echo "$PR_TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          fi
 
           if [ -z "$VERSION" ]; then
             echo "::error::Could not extract version from PR title: $PR_TITLE"
