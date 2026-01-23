@@ -1287,6 +1287,40 @@ count.value++  // Works
 <template>{{ count }}</template>
 ```
 
+### 5. GitHub Actions Expression Functions
+
+**Problem:**
+```yaml
+# These functions DON'T EXIST in GitHub Actions
+if: contains(toLower(github.event.head_commit.message), 'release')
+if: contains(lower(github.event.head_commit.message), 'release')
+```
+
+**Reality:**
+GitHub Actions expressions have a **very limited** function set:
+- `contains()`, `startsWith()`, `endsWith()` - string matching
+- `format()`, `join()` - string formatting
+- `toJSON()`, `fromJSON()` - JSON conversion
+- `hashFiles()` - file hashing
+- `success()`, `failure()`, `cancelled()`, `always()` - status checks
+
+**NOT available:**
+- `lower()`, `toLower()`, `toUpperCase()` - NO case conversion
+- `trim()`, `replace()`, `split()` - NO string manipulation
+- `length()`, `substring()` - NO string operations
+
+**Solution:**
+```yaml
+# Use exact case matching only
+if: contains(github.event.head_commit.message, 'release')
+
+# Or use a shell step for complex logic
+- run: |
+    if echo "${{ github.event.head_commit.message }}" | grep -iq "release"; then
+      echo "matched=true" >> $GITHUB_OUTPUT
+    fi
+```
+
 ## Release Process
 
 1. Update version: `npm version patch` or `npm version minor`

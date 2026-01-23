@@ -309,6 +309,41 @@ const cssVariableStyle = computed(() => {
 - Use `useSanitize()` composable for consistent sanitization
 - Never trust user input
 
+### GitHub Actions Expressions - Limited Function Set
+
+**GitHub Actions expressions have a very limited set of functions.** Do not suggest functions that don't exist.
+
+**Available functions:**
+- `contains()`, `startsWith()`, `endsWith()` - string matching
+- `format()`, `join()` - string formatting
+- `toJSON()`, `fromJSON()` - JSON conversion
+- `hashFiles()` - file hashing
+- `success()`, `failure()`, `cancelled()`, `always()` - status checks
+
+**NOT available (do not suggest):**
+- `lower()`, `toLower()`, `toLowerCase()` - NO case conversion exists
+- `upper()`, `toUpper()`, `toUpperCase()` - NO case conversion exists
+- `trim()`, `replace()`, `split()` - NO string manipulation
+- `length()`, `substring()` - NO string operations
+
+```yaml
+# WRONG - these functions don't exist
+if: contains(toLower(github.event.head_commit.message), 'release')
+if: contains(lower(github.event.head_commit.message), 'release')
+
+# CORRECT - use exact case matching only
+if: contains(github.event.head_commit.message, 'release')
+```
+
+For case-insensitive matching, use a shell step instead:
+```yaml
+- run: |
+    MESSAGE="${{ github.event.head_commit.message }}"
+    if echo "$MESSAGE" | grep -iq "release"; then
+      echo "matched=true" >> $GITHUB_OUTPUT
+    fi
+```
+
 ## Code Review Checklist
 
 - Code is easy to read and understand
