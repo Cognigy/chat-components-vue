@@ -42,6 +42,7 @@ export { DownloadIcon, CloseIcon, VideoPlayIcon, AudioPlayIcon, AudioPauseIcon, 
 // Utilities
 export { match, getChannelPayload } from './utils/matcher'
 export { sanitizeHTMLWithConfig, sanitizeContent } from './utils/sanitize'
+export { configColorsToCssVariables } from './utils/theme'
 export { getWebchatButtonLabel, interpolateString, getRandomId, moveFocusToMessageFocusTarget, replaceUrlsWithHTMLanchorElem, getBackgroundImage, getFileName, getFileExtension, getSizeLabel, isImageAttachment, VALID_IMAGE_MIME_TYPES } from './utils/helpers'
 
 // Types

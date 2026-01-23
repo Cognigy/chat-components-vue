@@ -278,6 +278,31 @@ describe('Component', () => {
 })
 ```
 
+### Vue Reactivity - Avoid False Optimization Suggestions
+
+**Vue's `computed` properties are already memoized.** Do not suggest additional memoization, caching, or shallow comparison for computed properties - Vue handles this automatically.
+
+```typescript
+// This is ALREADY optimized - Vue caches the result
+const cssVariableStyle = computed(() => {
+  return configColorsToCssVariables(props.config?.settings?.colors)
+})
+
+// Do NOT suggest adding:
+// - Manual memoization (useMemo-like patterns)
+// - Shallow comparison wrappers
+// - Caching layers for computed properties
+```
+
+**When to suggest optimization:**
+- Only for genuinely expensive operations (>10ms): complex algorithms, large data transformations
+- Never for simple object mapping, property access, or filtering small arrays
+
+**When NOT to suggest optimization:**
+- Simple computed properties (object creation, filtering, mapping)
+- Operations that take microseconds
+- Code where "optimization" overhead exceeds the operation cost
+
 ### Security
 
 - All HTML content goes through DOMPurify sanitization

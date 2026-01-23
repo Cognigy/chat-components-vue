@@ -97,10 +97,28 @@ export interface ChatSettings {
     showEngagementInChat?: boolean
   }
   colors?: {
+    // Primary action colors
     primaryColor?: string
+    primaryColorHover?: string
+    primaryColorFocus?: string
+    primaryColorDisabled?: string
+    primaryContrastColor?: string
     secondaryColor?: string
+
+    // Message bubble colors
     botMessageColor?: string
+    botMessageContrastColor?: string
     userMessageColor?: string
+    userMessageContrastColor?: string
+    agentMessageColor?: string
+    agentMessageContrastColor?: string
+
+    // Message bubble borders
+    borderBotMessage?: string
+    borderUserMessage?: string
+    borderAgentMessage?: string
+
+    // Link color
     textLinkColor?: string
   }
   behavior?: {

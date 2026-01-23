@@ -1,0 +1,119 @@
+# =============================================================================
+# @cognigy/chat-components-vue - Auto Tag Release
+# =============================================================================
+# Triggered when a release PR is merged to main.
+# Automatically creates and pushes a version tag, which triggers the publish
+# workflow.
+#
+# Release PR title format: "chore: release v0.2.0"
+# =============================================================================
+
+name: Auto Tag Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  create-tag:
+    name: Create Release Tag
+    runs-on: ubuntu-latest
+
+    # Only run when:
+    # 1. PR was actually merged (not just closed)
+    # 2. PR title matches release pattern
+    if: |
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.title, 'chore: release v')
+
+    permissions:
+      contents: write
+
+    steps:
+      # ----------------------------------------------------------------------
+      # Checkout with full history
+      # ----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ----------------------------------------------------------------------
+      # Configure Git
+      # ----------------------------------------------------------------------
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ----------------------------------------------------------------------
+      # Extract version from PR title and create tag
+      # ----------------------------------------------------------------------
+      - name: Extract version and create tag
+        id: create-tag
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          echo "PR Title: $PR_TITLE"
+
+          # Extract version from PR title: "chore: release v0.2.0" → "v0.2.0"
+          VERSION=$(echo "$PR_TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not extract version from PR title: $PR_TITLE"
+            exit 1
+          fi
+
+          echo "Extracted version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Check if tag already exists
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "::warning::Tag $VERSION already exists, skipping"
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "tag_exists=false" >> $GITHUB_OUTPUT
+
+          # Create annotated tag
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+
+          echo "Created and pushed tag: $VERSION"
+
+      # ----------------------------------------------------------------------
+      # Summary
+      # ----------------------------------------------------------------------
+      - name: Summary
+        if: always()
+        run: |
+          VERSION="${{ steps.create-tag.outputs.version }}"
+          TAG_EXISTS="${{ steps.create-tag.outputs.tag_exists }}"
+
+          echo "# Auto Tag Release" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "$TAG_EXISTS" == "true" ]]; then
+            echo "Tag \`$VERSION\` already exists. Skipping tag creation." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Tag Created" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| **Tag** | \`$VERSION\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| **PR** | #${{ github.event.pull_request.number }} |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The \`publish.yml\` workflow will now run automatically to:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Build the package" >> $GITHUB_STEP_SUMMARY
+            echo "2. Create GitHub Release" >> $GITHUB_STEP_SUMMARY
+            echo "3. Publish to npm" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*Automated by GitHub Actions*" >> $GITHUB_STEP_SUMMARY

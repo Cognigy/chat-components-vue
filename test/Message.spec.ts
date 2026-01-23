@@ -434,6 +434,76 @@ describe('Message', () => {
     })
   })
 
+  describe('CSS Variable Injection', () => {
+    it('injects CSS variables from config colors', () => {
+      const config = {
+        settings: {
+          colors: {
+            primaryColor: '#0b3694',
+            botMessageColor: '#f5f5f5',
+          },
+        },
+      }
+      const message = createMessage()
+
+      const wrapper = mount(Message, {
+        props: { message, config },
+      })
+
+      const style = wrapper.find('article').attributes('style')
+      expect(style).toContain('--cc-primary-color: #0b3694')
+      expect(style).toContain('--cc-background-bot-message: #f5f5f5')
+    })
+
+    it('does not inject CSS variables when config.colors is undefined', () => {
+      const config = {
+        settings: {},
+      }
+      const message = createMessage()
+
+      const wrapper = mount(Message, {
+        props: { message, config },
+      })
+
+      const style = wrapper.find('article').attributes('style') || ''
+      expect(style).not.toContain('--cc-primary-color')
+    })
+
+    it('injects all color variable types', () => {
+      const config = {
+        settings: {
+          colors: {
+            primaryColor: '#001',
+            primaryColorHover: '#002',
+            primaryContrastColor: '#003',
+            botMessageColor: '#004',
+            botMessageContrastColor: '#005',
+            userMessageColor: '#006',
+            userMessageContrastColor: '#007',
+            borderBotMessage: '#008',
+            textLinkColor: '#009',
+          },
+        },
+      }
+      const message = createMessage()
+
+      const wrapper = mount(Message, {
+        props: { message, config },
+      })
+
+      const style = wrapper.find('article').attributes('style') || ''
+      expect(style).toContain('--cc-primary-color: #001')
+      expect(style).toContain('--cc-primary-color-hover: #002')
+      expect(style).toContain('--cc-primary-contrast-color: #003')
+      expect(style).toContain('--cc-background-bot-message: #004')
+      expect(style).toContain('--cc-bot-message-contrast-color: #005')
+      expect(style).toContain('--cc-background-user-message: #006')
+      expect(style).toContain('--cc-user-message-contrast-color: #007')
+      expect(style).toContain('--cc-border-bot-message: #008')
+      expect(style).toContain('--cc-text-link-color: #009')
+    })
+  })
+
   describe('Edge Cases', () => {
     it('handles empty message data', () => {
       const message = createMessage({

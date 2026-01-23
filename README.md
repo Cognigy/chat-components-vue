@@ -124,6 +124,44 @@ const plugins: MessagePlugin[] = [
 </template>
 ```
 
+## Theming
+
+Customize colors via the `config.settings.colors` object:
+
+```typescript
+const chatConfig: ChatConfig = {
+  settings: {
+    colors: {
+      // Primary colors (buttons, links, focus states)
+      primaryColor: '#1976d2',
+      primaryColorHover: '#1565c0',
+      primaryColorFocus: '#1976d2',
+      primaryContrastColor: '#ffffff',
+
+      // Message bubble backgrounds
+      botMessageColor: '#f5f5f5',
+      userMessageColor: '#1976d2',
+      agentMessageColor: '#e8f4fd',
+
+      // Message text colors
+      botMessageContrastColor: '#1a1a1a',
+      userMessageContrastColor: '#ffffff',
+      agentMessageContrastColor: '#1a1a1a',
+
+      // Message bubble borders
+      borderBotMessage: 'transparent',
+      borderUserMessage: 'transparent',
+      borderAgentMessage: 'transparent',
+
+      // Link color
+      textLinkColor: '#1976d2',
+    },
+  },
+}
+```
+
+All color properties are optional and have sensible defaults.
+
 ## Documentation
 
 - [Component API Reference](./docs/components/README.md) - Props, events, and usage

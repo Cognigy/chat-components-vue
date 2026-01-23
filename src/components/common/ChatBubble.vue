@@ -65,7 +65,7 @@ const bubbleStyle = computed((): CSSProperties => {
 <style module>
 .bubble {
   border-radius: 15px;
-  border: 1px solid var(--cc-border-bot-message);
+  border: 1px solid var(--cc-border-bot-message, transparent);
   padding: 12px;
   max-width: 295px;
   width: max-content;
@@ -81,20 +81,20 @@ const bubbleStyle = computed((): CSSProperties => {
 }
 
 article:global(.bot) .bubble {
-  background: var(--cc-background-bot-message);
-  color: var(--cc-bot-message-contrast-color);
+  background: var(--cc-background-bot-message, #f5f5f5);
+  color: var(--cc-bot-message-contrast-color, #1a1a1a);
 }
 
 article:global(.agent) .bubble {
-  background: var(--cc-background-agent-message);
-  border-color: var(--cc-border-agent-message);
-  color: var(--cc-agent-message-contrast-color);
+  background: var(--cc-background-agent-message, #e8f4fd);
+  border-color: var(--cc-border-agent-message, transparent);
+  color: var(--cc-agent-message-contrast-color, #1a1a1a);
 }
 
 article:global(.user) .bubble {
-  background: var(--cc-background-user-message);
-  border-color: var(--cc-border-user-message);
-  color: var(--cc-user-message-contrast-color);
+  background: var(--cc-background-user-message, #1976d2);
+  border-color: var(--cc-border-user-message, transparent);
+  color: var(--cc-user-message-contrast-color, #ffffff);
 }
 
 article:not(:global(.user)) .incoming,
