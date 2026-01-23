@@ -24,6 +24,15 @@ on:
       - '**.md'
       - '.github/workflows/**'
       - 'plans/**'
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        type: choice
+        options:
+          - minor
+          - patch
+        default: minor
 
 jobs:
   prepare-release:
@@ -31,7 +40,13 @@ jobs:
     runs-on: ubuntu-latest
 
     # Don't run on commits made by this workflow or version bump commits
-    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, 'chore: bump version') && !contains(toLower(github.event.head_commit.message), 'chore: release')"
+    # Allow manual triggers (workflow_dispatch) - head_commit is null in that case
+    if: >-
+      github.event_name == 'workflow_dispatch' || (
+        !contains(github.event.head_commit.message || '', '[skip ci]') &&
+        !contains(github.event.head_commit.message || '', 'chore: bump version') &&
+        !contains(github.event.head_commit.message || '', 'chore: release')
+      )
 
     permissions:
       contents: write
@@ -44,6 +59,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
+          ref: main  # Always use main as source, even when triggered from other branches
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -69,6 +85,14 @@ jobs:
       - name: Determine bump type
         id: bump-type
         run: |
+          # For manual triggers (workflow_dispatch), use the selected input
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+            echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+            echo "Manual trigger - will bump ${BUMP_TYPE^^} version"
+            exit 0
+          fi
+
           # Check if this is a Dependabot commit
           COMMIT_AUTHOR="${{ github.event.head_commit.author.username }}"
           COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
