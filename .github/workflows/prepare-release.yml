@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # Don't run on commits made by this workflow or version bump commits
-    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, 'chore: bump version') && !contains(github.event.head_commit.message, 'chore: release v')"
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, 'chore: bump version') && !contains(toLower(github.event.head_commit.message), 'chore: release')"
 
     permissions:
       contents: write
