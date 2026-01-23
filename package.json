@@ -61,7 +61,7 @@
   },
   "dependencies": {
     "@braintree/sanitize-url": "^7.1.1",
-    "@cognigy/socket-client": "5.0.0-beta.20",
+    "@cognigy/socket-client": "5.0.0-beta.25",
     "@fontsource/figtree": "5.2.10",
     "dompurify": "^3.0.11",
     "flatpickr": "^4.6.13",
@@ -70,7 +70,7 @@
     "swiper": "^12.0.3"
   },
   "devDependencies": {
-    "@types/dompurify": "^3.0.5",
+    "@types/dompurify": "^3.2.0",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^25.0.9",
     "@vitejs/plugin-vue": "^6.0.0",
@@ -78,15 +78,15 @@
     "@vue/test-utils": "^2.4.0",
     "eslint": "^9.0.0",
     "eslint-plugin-vue": "^10.7.0",
-    "globals": "^16.3.0",
+    "globals": "^17.0.0",
     "jsdom": "^27.0.0",
     "npm-check-updates": "^19.3.1",
     "typescript": "^5.9.0",
-    "typescript-eslint": "^8.35.1",
+    "typescript-eslint": "^8.53.1",
     "vite": "^7.0.0",
     "vite-plugin-dts": "^4.2.0",
     "vitest": "^4.0.0",
-    "vue": "^3.5.0",
+    "vue": "^3.5.27",
     "vue-tsc": "^3.2.2"
   },
   "engines": {
