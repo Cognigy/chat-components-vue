@@ -22,7 +22,7 @@ export interface IMessageWithId extends IMessage {
  * Type guard to check if a message has an id property
  */
 export function hasMessageId(message: IMessage): message is IMessageWithId & { id: string } {
-  return 'id' in message && typeof (message as IMessageWithId).id === 'string'
+  return 'id' in message && typeof message.id === 'string'
 }
 
 /**
