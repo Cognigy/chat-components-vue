@@ -10,6 +10,9 @@ import type { IMessage } from '@cognigy/socket-client'
 import type { ChatConfig, MatchRule, MessagePlugin, MatchResult } from '../types'
 import { isAdaptiveCardPayload } from '../types'
 
+// Pre-compiled regex for escape sequence check
+const ESCAPE_SEQUENCE_REGEX = /^[\n\t\r\v\f\s]*$/
+
 /**
  * Check if message has channel payload
  */
@@ -46,16 +49,17 @@ function isOnlyEscapeSequence(text: string | null | undefined): boolean {
   }
 
   const trimmed = text.trim()
-  return trimmed === '' || /^[\n\t\r\v\f\s]*$/.test(trimmed)
+  return trimmed === '' || ESCAPE_SEQUENCE_REGEX.test(trimmed)
 }
 
 /**
  * Default match rules for internal message types.
  * These rules map message data structures to component names.
  * Components are resolved by name lookup in Message.vue.
+ *
+ * Created once at module load for performance - rules are static.
  */
-export function createDefaultMatchRules(): MatchRule[] {
-  return [
+const DEFAULT_MATCH_RULES: MatchRule[] = [
     // xApp submit
     {
       name: 'XAppSubmit',
@@ -240,6 +244,13 @@ export function createDefaultMatchRules(): MatchRule[] {
       },
     },
   ]
+
+/**
+ * Returns the default match rules.
+ * Exposed for testing and extension purposes.
+ */
+export function createDefaultMatchRules(): MatchRule[] {
+  return DEFAULT_MATCH_RULES
 }
 
 /**
@@ -254,9 +265,11 @@ export function match(
   config?: ChatConfig,
   externalPlugins: MessagePlugin[] = []
 ): MatchResult[] {
-  // Combine external plugins with default rules
-  // External plugins are checked first
-  const allRules: MatchResult[] = [...externalPlugins, ...createDefaultMatchRules()]
+  // External plugins are checked first, then default rules
+  // Avoid array spread when no external plugins (common case)
+  const allRules: MatchResult[] = externalPlugins.length > 0
+    ? [...externalPlugins, ...DEFAULT_MATCH_RULES]
+    : DEFAULT_MATCH_RULES
 
   const matchedRules: MatchResult[] = []
 

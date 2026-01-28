@@ -4,6 +4,13 @@
 
 import type {IWebchatButton, IWebchatQuickReply} from '../types'
 
+// Pre-compiled regex patterns (compiled once at module load)
+const TEMPLATE_PLACEHOLDER_REGEX = /{(\w+)}/g
+const URL_MATCHER_REGEX =
+  /(^|\s)(\b(https?):\/\/([-A-Z0-9+&@$#/%?=~_|!:,.;\p{L}]*[-A-Z0-9+&$@#/%=~_|\p{L}]))/giu
+const CONTROL_CHARS_REGEX = /[\r\n\f]/g
+const URL_SCHEME_REGEX = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
+
 /**
  * Gets the label for a button
  * Returns "Call" for phone_number buttons without title
@@ -29,7 +36,7 @@ export function interpolateString(
   template: string,
   replacements: Record<string, string>
 ): string {
-  return template.replace(/{(\w+)}/g, (_, key) => {
+  return template.replace(TEMPLATE_PLACEHOLDER_REGEX, (_, key) => {
     return key in replacements ? replacements[key] : ''
   })
 }
@@ -62,12 +69,9 @@ export function moveFocusToMessageFocusTarget(dataMessageId: string): void {
  * - Will not work with emails
  */
 export function replaceUrlsWithHTMLanchorElem(text: string): string {
-  // Enhanced regex to capture URLs with parameters
-  const urlMatcherRegex =
-    /(^|\s)(\b(https?):\/\/([-A-Z0-9+&@$#/%?=~_|!:,.;\p{L}]*[-A-Z0-9+&$@#/%=~_|\p{L}]))/giu
-
-  return text.replace(urlMatcherRegex, (url) => {
-    return `<a href="${url}" target="_blank">${url}</a>`
+  return text.replace(URL_MATCHER_REGEX, (_, prefix, url) => {
+    // Preserve leading whitespace, but keep it outside the anchor
+    return `${prefix}<a href="${url}" target="_blank">${url}</a>`
   })
 }
 
@@ -79,13 +83,13 @@ export function getBackgroundImage(url: string): string | undefined {
   if (!url) return undefined
 
   // Remove control characters that could break CSS parsing
-  let sanitized = url.replace(/[\r\n\f]/g, '')
+  let sanitized = url.replace(CONTROL_CHARS_REGEX, '')
 
   // If the string looks like an absolute URL (has a scheme), validate allowed protocols (http/https).
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(sanitized)) {
+  if (URL_SCHEME_REGEX.test(sanitized)) {
     try {
       const parsed = new URL(sanitized)
-      if (!/^https?:$/i.test(parsed.protocol)) {
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
         return undefined
       }
       // Normalize absolute URLs
@@ -117,13 +121,12 @@ const ONE_KB = 1000
  * Example: "document.pdf" → "document."
  */
 export function getFileName(fileNameWithExtension: string): string {
-  const splitName = fileNameWithExtension.split('.')
-  if (splitName.length > 1) {
-    return `${splitName.slice(0, -1).join('.')}.`
-  } else {
-    // return full name here if it didn't have a file ending
-    return fileNameWithExtension
+  const lastDotIndex = fileNameWithExtension.lastIndexOf('.')
+  if (lastDotIndex > 0) {
+    return fileNameWithExtension.slice(0, lastDotIndex + 1)
   }
+  // Return full name if no extension
+  return fileNameWithExtension
 }
 
 /**
@@ -131,12 +134,11 @@ export function getFileName(fileNameWithExtension: string): string {
  * Example: "document.pdf" → "pdf"
  */
 export function getFileExtension(fileNameWithExtension: string): string | null {
-  const splitName = fileNameWithExtension.split('.')
-  if (splitName.length > 1) {
-    return splitName.pop() || null
-  } else {
-    return null
+  const lastDotIndex = fileNameWithExtension.lastIndexOf('.')
+  if (lastDotIndex > 0 && lastDotIndex < fileNameWithExtension.length - 1) {
+    return fileNameWithExtension.slice(lastDotIndex + 1)
   }
+  return null
 }
 
 /**
@@ -152,13 +154,18 @@ export function getSizeLabel(size: number): string {
 }
 
 /**
- * Valid image MIME types for file attachments
+ * Valid image MIME types for file attachments (Set for O(1) lookup)
  */
-export const VALID_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+export const VALID_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+])
 
 /**
  * Checks if attachment is a valid image type
  */
 export function isImageAttachment(mimeType: string): boolean {
-  return VALID_IMAGE_MIME_TYPES.includes(mimeType)
+  return VALID_IMAGE_MIME_TYPES.has(mimeType)
 }

@@ -57,15 +57,24 @@ MSAdaptiveCard.onProcessMarkdown = (text, result) => {
   }
 }
 
+/**
+ * Host config input type - plain object that HostConfig constructor parses.
+ * We don't use Partial<HostConfig> because HostConfig properties are class instances,
+ * but the constructor accepts plain objects and converts them internally.
+ */
+type HostConfigInput = Record<string, unknown>
+
 interface Props {
   /**
    * The Adaptive Card payload to render
    */
   payload?: Record<string, unknown>
   /**
-   * Host configuration for styling the card
+   * Host configuration for styling the card.
+   * Accepts a plain object matching the HostConfig structure - the library
+   * parses this internally when constructing the HostConfig instance.
    */
-  hostConfig?: Partial<HostConfig>
+  hostConfig?: HostConfigInput
   /**
    * When true, disables all inputs and buttons after rendering
    * Useful for displaying submitted cards in chat history
@@ -102,7 +111,7 @@ function applyInputData(
   }
 
   // Deep clone to avoid mutating original
-  const payload = JSON.parse(JSON.stringify(cardPayload))
+  const payload = structuredClone(cardPayload)
 
   function processElement(element: Record<string, unknown>): void {
     // Check if this is an input element with an id

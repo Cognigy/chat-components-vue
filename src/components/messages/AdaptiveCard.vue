@@ -28,7 +28,6 @@ import { computed, useCssModule } from 'vue'
 import ChatBubble from '../common/ChatBubble.vue'
 import AdaptiveCardRenderer from './AdaptiveCardRenderer.vue'
 import { useMessageContext } from '../../composables/useMessageContext'
-import type { HostConfig } from 'adaptivecards'
 import type { IMessageDataExtended } from '../../types'
 
 const styles = useCssModule()
@@ -41,8 +40,11 @@ const { message, config } = useMessageContext()
  * Note: foregroundColors are applied as inline styles by the adaptivecards library,
  * so we use actual color values here. For customization, consumers should use
  * the CSS variables (--cc-adaptive-card-text-color) which override via !important.
+ *
+ * This is typed as a plain object (not Partial<HostConfig>) because the HostConfig
+ * constructor accepts plain objects and parses them internally.
  */
-const adaptiveCardsHostConfig: Partial<HostConfig> = {
+const adaptiveCardsHostConfig = {
   fontFamily: 'inherit',
   fontSizes: {
     small: 10,
@@ -67,7 +69,6 @@ const adaptiveCardsHostConfig: Partial<HostConfig> = {
     default: {
       backgroundColor: '#fff',
       foregroundColors: {
-        // @ts-expect-error - adaptivecards types are incomplete
         default: {
           default: '#333333',
           subtle: '#666666',
@@ -156,23 +157,13 @@ const submittedData = computed<Record<string, unknown> | undefined>(() => {
 /**
  * Determine if the card should be rendered in readonly mode
  *
- * Logic:
- * - If config.settings.behavior.adaptiveCardsReadonly is true → always readonly
- * - If config.settings.behavior.adaptiveCardsReadonly is false/undefined → smart default:
- *   - Readonly if submitted data exists (card was already submitted)
- *   - Interactive if no submitted data (card awaiting user input)
+ * Readonly when:
+ * - config.settings.behavior.adaptiveCardsReadonly is true (forced presentation mode)
+ * - OR submitted data exists (card was already submitted, showing history)
  */
 const isReadonly = computed(() => {
   const configReadonly = config?.settings?.behavior?.adaptiveCardsReadonly
-
-  // Config override: force readonly mode for presentation-only use cases
-  if (configReadonly === true) {
-    return true
-  }
-
-  // Smart default: readonly if card has submitted data (it's history)
-  // Interactive if no submitted data (awaiting user input)
-  return submittedData.value !== undefined
+  return configReadonly === true || submittedData.value !== undefined
 })
 </script>
 

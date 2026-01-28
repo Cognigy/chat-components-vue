@@ -136,11 +136,10 @@ export interface ChatSettings {
     /**
      * Controls adaptive card interactivity.
      * - `true`: All cards are readonly (presentation only), regardless of submitted data
-     * - `false`: Cards are interactive unless they have submitted data (smart default)
-     * - `undefined`: Same as `false` (smart default)
+     * - `false` or `undefined`: Smart default - readonly only if card has submitted data
      *
      * Use `true` for chat history/transcript displays where no interaction is needed.
-     * Use `false` for interactive chat interfaces where users can submit card data.
+     * Use `false`/omit for interactive chat interfaces with smart auto-detection.
      */
     adaptiveCardsReadonly?: boolean
   }

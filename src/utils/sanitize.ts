@@ -95,8 +95,7 @@ export function sanitizeHTMLWithConfig(
   })
 
   try {
-    const sanitized = DOMPurify.sanitize(text, config).toString()
-    return sanitized
+    return DOMPurify.sanitize(text, config).toString()
   } catch (error) {
     console.error('sanitizeHTMLWithConfig: Sanitization failed', {
       error,
