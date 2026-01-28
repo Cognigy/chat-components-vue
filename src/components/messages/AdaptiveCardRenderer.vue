@@ -123,14 +123,16 @@ function applyInputData(
       const value = inputData[id]
 
       if (type === 'Input.Toggle') {
-        // Toggle inputs use valueOn/valueOff, set value to match
-        const isToggleOn = value === true || value === 'true' || value === element.valueOn
+        // Toggle inputs use valueOn/valueOff - custom values take precedence
+        const matchesCustomOn = element.valueOn !== undefined && value === element.valueOn
+        const matchesCustomOff = element.valueOff !== undefined && value === element.valueOff
+        const isStandardOn = value === true || value === 'true'
 
-        if (isToggleOn) {
-          element.value = element.valueOn ?? 'true'
-        } else {
-          element.value = element.valueOff ?? 'false'
-        }
+        const isToggleOn = matchesCustomOn || (!matchesCustomOff && isStandardOn)
+
+        element.value = isToggleOn
+          ? (element.valueOn ?? 'true')
+          : (element.valueOff ?? 'false')
       } else if (type === 'Input.ChoiceSet' && Array.isArray(value)) {
         // Multi-select choice sets use comma-separated values
         element.value = value.join(',')

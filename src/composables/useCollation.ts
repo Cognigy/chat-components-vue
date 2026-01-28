@@ -107,12 +107,15 @@ export function useCollation(
           : lastCollated
 
         if (canCollate(current, lastOriginal)) {
-          // Collate: append text and track original messages
-          lastCollated.text = (lastCollated.text ?? '') + '\n' + (current.text ?? '')
-          if (existingCollatedFrom) {
-            existingCollatedFrom.push(current)
-          } else {
-            lastCollated.collatedFrom = [lastOriginal, current]
+          // Collate: create new object with combined text (avoid mutating existing)
+          const collatedFrom = existingCollatedFrom
+            ? [...existingCollatedFrom, current]
+            : [lastOriginal, current]
+
+          result[lastIndex] = {
+            ...lastCollated,
+            text: (lastCollated.text ?? '') + '\n' + (current.text ?? ''),
+            collatedFrom,
           }
           continue
         }

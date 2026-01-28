@@ -1,21 +1,21 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
 import AdaptiveCard from '../src/components/messages/AdaptiveCard.vue'
 import AdaptiveCardRenderer from '../src/components/messages/AdaptiveCardRenderer.vue'
 import { MessageContextKey } from '../src/composables/useMessageContext'
 import type { IMessage } from '../src/types'
 
+// Define mock functions at module scope so they can be directly asserted
+const mockParse = vi.fn()
+const mockRender = vi.fn(() => {
+  const div = document.createElement('div')
+  div.className = 'ac-adaptiveCard'
+  div.innerHTML = '<span class="ac-textRun">Rendered Card</span>'
+  return div
+})
+
 // Mock the adaptivecards library
 vi.mock('adaptivecards', () => {
-  const mockRender = vi.fn(() => {
-    const div = document.createElement('div')
-    div.className = 'ac-adaptiveCard'
-    div.innerHTML = '<span class="ac-textRun">Rendered Card</span>'
-    return div
-  })
-
-  const mockParse = vi.fn()
-
   class MockAdaptiveCard {
     hostConfig: any = null
     parse = mockParse
@@ -490,6 +490,11 @@ describe('AdaptiveCardRenderer', () => {
     })
   }
 
+  beforeEach(() => {
+    mockParse.mockClear()
+    mockRender.mockClear()
+  })
+
   afterEach(() => {
     wrapper?.unmount()
   })
@@ -503,31 +508,24 @@ describe('AdaptiveCardRenderer', () => {
       expect(target.exists()).toBe(true)
     })
 
-    it('calls adaptivecards parse with payload', async () => {
-      const { AdaptiveCard } = await import('adaptivecards')
-      const mockInstance = new AdaptiveCard()
-
+    it('calls adaptivecards parse with payload', () => {
       const payload = {
         type: 'AdaptiveCard',
         body: [{ type: 'TextBlock', text: 'Test' }],
       }
       wrapper = mountRenderer(payload)
 
-      // The mock should have been called
-      expect(mockInstance.parse).toHaveBeenCalled()
+      expect(mockParse).toHaveBeenCalledWith(payload)
     })
 
-    it('calls adaptivecards render', async () => {
-      const { AdaptiveCard } = await import('adaptivecards')
-      const mockInstance = new AdaptiveCard()
-
+    it('calls adaptivecards render', () => {
       const payload = {
         type: 'AdaptiveCard',
         body: [{ type: 'TextBlock', text: 'Test' }],
       }
       wrapper = mountRenderer(payload)
 
-      expect(mockInstance.render).toHaveBeenCalled()
+      expect(mockRender).toHaveBeenCalled()
     })
   })
 

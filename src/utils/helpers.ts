@@ -63,15 +63,30 @@ export function moveFocusToMessageFocusTarget(dataMessageId: string): void {
 }
 
 /**
+ * Escapes HTML special characters to prevent injection attacks
+ */
+function escapeHtmlAttribute(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+/**
  * Helper function that replaces URLs in a string with HTML anchor elements
  * - Works with URLs starting with http/https, www., or just domain/subdomain
  * - Will only match URLs at the beginning or following whitespace
  * - Will not work with emails
+ * - URLs are escaped to prevent injection attacks
  */
 export function replaceUrlsWithHTMLanchorElem(text: string): string {
   return text.replace(URL_MATCHER_REGEX, (_, prefix, url) => {
+    // Escape URL for safe insertion into HTML attributes and content
+    const escapedUrl = escapeHtmlAttribute(url)
     // Preserve leading whitespace, but keep it outside the anchor
-    return `${prefix}<a href="${url}" target="_blank">${url}</a>`
+    return `${prefix}<a href="${escapedUrl}" target="_blank">${escapedUrl}</a>`
   })
 }
 

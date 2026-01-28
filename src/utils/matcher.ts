@@ -246,11 +246,12 @@ const DEFAULT_MATCH_RULES: MatchRule[] = [
   ]
 
 /**
- * Returns the default match rules.
+ * Returns a copy of the default match rules.
  * Exposed for testing and extension purposes.
+ * Returns a new array to prevent mutation of internal rules.
  */
 export function createDefaultMatchRules(): MatchRule[] {
-  return DEFAULT_MATCH_RULES
+  return [...DEFAULT_MATCH_RULES]
 }
 
 /**
@@ -266,10 +267,10 @@ export function match(
   externalPlugins: MessagePlugin[] = []
 ): MatchResult[] {
   // External plugins are checked first, then default rules
-  // Avoid array spread when no external plugins (common case)
+  // Always create a new array to prevent mutation of DEFAULT_MATCH_RULES
   const allRules: MatchResult[] = externalPlugins.length > 0
     ? [...externalPlugins, ...DEFAULT_MATCH_RULES]
-    : DEFAULT_MATCH_RULES
+    : [...DEFAULT_MATCH_RULES]
 
   const matchedRules: MatchResult[] = []
 

@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, useCssModule, type Component } from 'vue'
+import { computed, reactive, watchEffect, useCssModule, type Component } from 'vue'
 import { match } from '../utils/matcher'
 import { configColorsToCssVariables } from '../utils/theme'
 import { provideMessageContext } from '../composables/useMessageContext'
@@ -57,12 +57,20 @@ const props = withDefaults(defineProps<MessageProps>(), {
 const dataMessageId = computed(() => getMessageId(props.message))
 
 // Provide message context for child components
-// Using reactive with getters to maintain reactivity when props change
+// Using reactive object synced via watchEffect for proper reactivity tracking
 const messageContext = reactive<MessageContext>({
-  get message() { return props.message },
-  get config() { return props.config },
-  get action() { return props.action },
-  get onEmitAnalytics() { return props.onEmitAnalytics },
+  message: props.message,
+  config: props.config,
+  action: props.action,
+  onEmitAnalytics: props.onEmitAnalytics,
+})
+
+// Keep context in sync with props changes
+watchEffect(() => {
+  messageContext.message = props.message
+  messageContext.config = props.config
+  messageContext.action = props.action
+  messageContext.onEmitAnalytics = props.onEmitAnalytics
 })
 
 provideMessageContext(messageContext)
