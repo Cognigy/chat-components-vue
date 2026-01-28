@@ -27,9 +27,22 @@ interface Props {
    * Host configuration for styling the card
    */
   hostConfig?: Partial<HostConfig>
+  /**
+   * When true, disables all inputs and buttons after rendering
+   * Useful for displaying submitted cards in chat history
+   */
+  readonly?: boolean
+  /**
+   * Data to pre-fill into input fields
+   * Keys should match input element IDs in the card
+   * Used to show submitted values in chat history
+   */
+  inputData?: Record<string, unknown>
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readonly: false,
+})
 
 const targetRef = ref<HTMLDivElement | null>(null)
 
@@ -62,6 +75,87 @@ function setupMarkdownProcessing(): void {
 }
 
 /**
+ * Apply input data to card payload by setting values on input elements
+ * Recursively walks the card structure to find inputs and set their values
+ */
+function applyInputData(
+  cardPayload: Record<string, unknown>,
+  inputData: Record<string, unknown>
+): Record<string, unknown> {
+  if (!inputData || Object.keys(inputData).length === 0) {
+    return cardPayload
+  }
+
+  // Deep clone to avoid mutating original
+  const payload = JSON.parse(JSON.stringify(cardPayload))
+
+  function processElement(element: Record<string, unknown>): void {
+    // Check if this is an input element with an id
+    const type = element.type as string | undefined
+    const id = element.id as string | undefined
+
+    if (type?.startsWith('Input.') && id && id in inputData) {
+      // Set the value for this input
+      const value = inputData[id]
+
+      if (type === 'Input.Toggle') {
+        // Toggle inputs use valueOn/valueOff, set value to match
+        element.value = value === true || value === 'true' || value === element.valueOn
+          ? element.valueOn ?? 'true'
+          : element.valueOff ?? 'false'
+      } else if (type === 'Input.ChoiceSet' && Array.isArray(value)) {
+        // Multi-select choice sets use comma-separated values
+        element.value = value.join(',')
+      } else {
+        element.value = value
+      }
+    }
+
+    // Recursively process child elements
+    if (Array.isArray(element.body)) {
+      element.body.forEach((child: Record<string, unknown>) => processElement(child))
+    }
+    if (Array.isArray(element.items)) {
+      element.items.forEach((child: Record<string, unknown>) => processElement(child))
+    }
+    if (Array.isArray(element.columns)) {
+      element.columns.forEach((col: Record<string, unknown>) => {
+        if (Array.isArray(col.items)) {
+          col.items.forEach((child: Record<string, unknown>) => processElement(child))
+        }
+      })
+    }
+    if (Array.isArray(element.actions)) {
+      element.actions.forEach((action: Record<string, unknown>) => {
+        if (action.card) {
+          processElement(action.card as Record<string, unknown>)
+        }
+      })
+    }
+  }
+
+  processElement(payload)
+  return payload
+}
+
+/**
+ * Disable all interactive elements in the rendered card
+ * Used for displaying submitted cards in chat history
+ */
+function disableInteractiveElements(container: HTMLElement): void {
+  const interactiveElements = container.querySelectorAll(
+    'input, textarea, select, button'
+  )
+  interactiveElements.forEach((el) => {
+    el.setAttribute('disabled', 'true')
+    el.setAttribute('aria-disabled', 'true')
+  })
+
+  // Add a class to the container for additional styling hooks
+  container.classList.add('ac-readonly')
+}
+
+/**
  * Render the adaptive card
  */
 function renderCard(): void {
@@ -80,8 +174,13 @@ function renderCard(): void {
   }
 
   try {
+    // Apply input data to payload if provided
+    const payloadToRender = props.inputData
+      ? applyInputData(props.payload, props.inputData)
+      : props.payload
+
     // Parse and render the card
-    cardInstance.parse(props.payload)
+    cardInstance.parse(payloadToRender)
     const renderedCard = cardInstance.render()
 
     if (renderedCard && targetRef.value) {
@@ -96,6 +195,11 @@ function renderCard(): void {
           heading.setAttribute('aria-level', '4')
         }
       })
+
+      // Disable all interactive elements when in readonly mode
+      if (props.readonly) {
+        disableInteractiveElements(targetRef.value)
+      }
     }
   } catch (error) {
     console.error('AdaptiveCardRenderer: Unable to render Adaptive Card', {
@@ -111,9 +215,9 @@ onMounted(() => {
   renderCard()
 })
 
-// Re-render when payload or hostConfig changes
+// Re-render when payload, hostConfig, or inputData changes
 watch(
-  () => [props.payload, props.hostConfig],
+  () => [props.payload, props.hostConfig, props.inputData],
   () => {
     renderCard()
   },

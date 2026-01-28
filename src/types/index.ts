@@ -120,6 +120,12 @@ export interface ChatSettings {
 
     // Link color
     textLinkColor?: string
+
+    // Adaptive Card colors
+    adaptiveCardTextColor?: string
+    adaptiveCardInputColor?: string
+    adaptiveCardInputBackground?: string
+    adaptiveCardInputBorder?: string
   }
   behavior?: {
     renderMarkdown?: boolean
