@@ -75,7 +75,11 @@ jobs:
           fi
 
           if [ -z "$VERSION" ]; then
-            echo "::error::Could not extract version from PR title: $PR_TITLE"
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+              echo "::error::Version input is empty or invalid for workflow_dispatch event"
+            else
+              echo "::error::Could not extract version from PR title: $PR_TITLE"
+            fi
             exit 1
           fi
 
