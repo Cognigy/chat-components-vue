@@ -22,12 +22,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useCssModule, type Component } from 'vue'
+import { computed, reactive, useCssModule, type Component } from 'vue'
 import { match } from '../utils/matcher'
 import { configColorsToCssVariables } from '../utils/theme'
 import { provideMessageContext } from '../composables/useMessageContext'
 import { getMessageId, isMessagePlugin } from '../types'
-import type { MessageProps } from '../types'
+import type { MessageProps, MessageContext } from '../types'
 
 const $style = useCssModule()
 
@@ -57,12 +57,15 @@ const props = withDefaults(defineProps<MessageProps>(), {
 const dataMessageId = computed(() => getMessageId(props.message))
 
 // Provide message context for child components
-provideMessageContext({
-  message: props.message,
-  config: props.config || {},
-  action: props.action || (() => {}),
-  onEmitAnalytics: props.onEmitAnalytics || (() => {}),
+// Using reactive with getters to maintain reactivity when props change
+const messageContext = reactive<MessageContext>({
+  get message() { return props.message },
+  get config() { return props.config },
+  get action() { return props.action },
+  get onEmitAnalytics() { return props.onEmitAnalytics },
 })
+
+provideMessageContext(messageContext)
 
 // Component map for internal match rules (maps rule names to Vue components)
 const componentMap: Record<string, Component> = {
