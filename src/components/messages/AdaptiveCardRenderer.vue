@@ -100,9 +100,13 @@ function applyInputData(
 
       if (type === 'Input.Toggle') {
         // Toggle inputs use valueOn/valueOff, set value to match
-        element.value = value === true || value === 'true' || value === element.valueOn
-          ? element.valueOn ?? 'true'
-          : element.valueOff ?? 'false'
+        const isToggleOn = value === true || value === 'true' || value === element.valueOn
+
+        if (isToggleOn) {
+          element.value = element.valueOn ?? 'true'
+        } else {
+          element.value = element.valueOff ?? 'false'
+        }
       } else if (type === 'Input.ChoiceSet' && Array.isArray(value)) {
         // Multi-select choice sets use comma-separated values
         element.value = value.join(',')
