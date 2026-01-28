@@ -22,12 +22,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useCssModule, type Component } from 'vue'
+import { computed, reactive, watchEffect, useCssModule, type Component } from 'vue'
 import { match } from '../utils/matcher'
 import { configColorsToCssVariables } from '../utils/theme'
 import { provideMessageContext } from '../composables/useMessageContext'
 import { getMessageId, isMessagePlugin } from '../types'
-import type { MessageProps } from '../types'
+import type { MessageProps, MessageContext } from '../types'
 
 const $style = useCssModule()
 
@@ -57,12 +57,23 @@ const props = withDefaults(defineProps<MessageProps>(), {
 const dataMessageId = computed(() => getMessageId(props.message))
 
 // Provide message context for child components
-provideMessageContext({
+// Using reactive object synced via watchEffect for proper reactivity tracking
+const messageContext = reactive<MessageContext>({
   message: props.message,
-  config: props.config || {},
-  action: props.action || (() => {}),
-  onEmitAnalytics: props.onEmitAnalytics || (() => {}),
+  config: props.config,
+  action: props.action,
+  onEmitAnalytics: props.onEmitAnalytics,
 })
+
+// Keep context in sync with props changes
+watchEffect(() => {
+  messageContext.message = props.message
+  messageContext.config = props.config
+  messageContext.action = props.action
+  messageContext.onEmitAnalytics = props.onEmitAnalytics
+})
+
+provideMessageContext(messageContext)
 
 // Component map for internal match rules (maps rule names to Vue components)
 const componentMap: Record<string, Component> = {

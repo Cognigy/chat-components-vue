@@ -519,6 +519,16 @@ When writing or modifying code in this repository, follow these principles:
 - Clear variable names that explain intent
 - Flat, readable control flow
 - Tried-and-true patterns over bleeding-edge techniques
+- - Minimal dependencies (use libraries only when necessary)
+- Keep things DRY except in tests
+
+### TypeScript specific guidelines
+- use interface for contracts (easier combining)
+- use type for data structures
+- avoid using `any`, `unknown`, `never`, or `as` type assertions in new code where a proper type can be defined; when dealing with genuinely dynamic or external data or library gaps, follow the "TypeScript Typing Philosophy" section below (controlled use with comments and optional chaining).
+- define explicit types and contracts.
+- use optional chaining and nullish coalescing
+- do not build try-catch blocks that directly catch errors thrown in the try block. If something goes wrong, log it where it happens. This only adds complexity and TypeScript disregards this practice anyway.
 
 ### Vue 3 Specific Guidelines
 
@@ -543,15 +553,19 @@ onMounted(() => {
 ```
 
 ```vue
+
 <script setup lang="ts">
-// ❌ Avoid: Overly complex reactive structures
-const state = reactive({
-  nested: {
-    deeply: {
-      complex: computed(() => /* ... */)
+  // ❌ Avoid: Overly complex reactive structures
+  import {reactive} from "@vue/reactivity";
+  import {computed} from "vue";
+
+  const state = reactive({
+    nested: {
+      deeply: {
+        complex: computed(() => /* ... */)
+      }
     }
-  }
-})
+  })
 </script>
 ```
 

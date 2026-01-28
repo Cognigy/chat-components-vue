@@ -22,7 +22,7 @@ export interface IMessageWithId extends IMessage {
  * Type guard to check if a message has an id property
  */
 export function hasMessageId(message: IMessage): message is IMessageWithId & { id: string } {
-  return 'id' in message && typeof (message as IMessageWithId).id === 'string'
+  return 'id' in message && typeof message.id === 'string'
 }
 
 /**
@@ -120,6 +120,12 @@ export interface ChatSettings {
 
     // Link color
     textLinkColor?: string
+
+    // Adaptive Card colors
+    adaptiveCardTextColor?: string
+    adaptiveCardInputColor?: string
+    adaptiveCardInputBackground?: string
+    adaptiveCardInputBorder?: string
   }
   behavior?: {
     renderMarkdown?: boolean
@@ -127,6 +133,15 @@ export interface ChatSettings {
     messageDelay?: number
     collateStreamedOutputs?: boolean
     focusInputAfterPostback?: boolean
+    /**
+     * Controls adaptive card interactivity.
+     * - `true`: All cards are readonly (presentation only), regardless of submitted data
+     * - `false` or `undefined`: Smart default - readonly only if card has submitted data
+     *
+     * Use `true` for chat history/transcript displays where no interaction is needed.
+     * Use `false`/omit for interactive chat interfaces with smart auto-detection.
+     */
+    adaptiveCardsReadonly?: boolean
   }
   widgetSettings?: {
     enableDefaultPreview?: boolean
@@ -369,5 +384,44 @@ export interface IWebchatChannelPayload {
     quick_replies?: QuickReply[]
     attachment?: TemplateAttachment | AudioAttachment | ImageAttachment | VideoAttachment
   }
-  adaptiveCard?: unknown
+  adaptiveCard?: Record<string, unknown>
+  /** Submitted adaptive card data */
+  adaptiveCardData?: Record<string, unknown>
+  data?: Record<string, unknown>
+  formData?: Record<string, unknown>
+}
+
+/**
+ * Cognigy message data structure
+ * Shape of message.data._cognigy
+ */
+export interface ICognigyData {
+  _webchat?: IWebchatChannelPayload
+  _defaultPreview?: IWebchatChannelPayload
+  _facebook?: IWebchatChannelPayload
+}
+
+/**
+ * Plugin payload structure for custom message types
+ */
+export interface IPluginPayload {
+  type?: string
+  payload?: Record<string, unknown>
+}
+
+/**
+ * Extended message data with Cognigy-specific fields
+ * Use this when accessing message.data with Cognigy payload structures
+ */
+export interface IMessageDataExtended {
+  _cognigy?: ICognigyData
+  _plugin?: IPluginPayload
+  /** Adaptive card submission request data */
+  request?: {
+    value?: Record<string, unknown>
+  }
+  /** Direct adaptive card data fields (fallback locations) */
+  adaptiveCardData?: Record<string, unknown>
+  data?: Record<string, unknown>
+  formData?: Record<string, unknown>
 }

@@ -44,35 +44,22 @@ export interface UseCollationReturn {
 }
 
 /**
- * Check if two messages can be collated together
+ * Check if two messages can be collated together.
+ * Both must be bot messages with text, no rich content, attachments, or plugins.
  */
 function canCollate(current: IMessage, previous: IMessage): boolean {
-  // Must both be bot messages
-  if (current.source !== 'bot' || previous.source !== 'bot') {
-    return false
-  }
-
-  // Must both be simple text messages (no rich content)
-  if (current.data?._cognigy?._webchat || previous.data?._cognigy?._webchat) {
-    return false
-  }
-
-  // Must both have text
-  if (!current.text || !previous.text) {
-    return false
-  }
-
-  // Don't collate if either has attachments
-  if (current.data?.attachments || previous.data?.attachments) {
-    return false
-  }
-
-  // Don't collate plugin messages
-  if (current.data?._plugin || previous.data?._plugin) {
-    return false
-  }
-
-  return true
+  return (
+    current.source === 'bot' &&
+    previous.source === 'bot' &&
+    Boolean(current.text) &&
+    Boolean(previous.text) &&
+    !current.data?._cognigy?._webchat &&
+    !previous.data?._cognigy?._webchat &&
+    !current.data?.attachments &&
+    !previous.data?.attachments &&
+    !current.data?._plugin &&
+    !previous.data?._plugin
+  )
 }
 
 /**
@@ -109,37 +96,33 @@ export function useCollation(
 
     const result: CollatedMessage[] = []
 
-    for (let i = 0; i < msgs.length; i++) {
-      const current = msgs[i]
+    for (const current of msgs) {
+      const lastIndex = result.length - 1
+      const lastCollated = result[lastIndex]
 
-      // Check if we can collate with the last message in result
-      if (result.length > 0) {
-        const lastCollated = result[result.length - 1]
-        const lastOriginal = lastCollated.collatedFrom
-          ? lastCollated.collatedFrom[lastCollated.collatedFrom.length - 1]
+      if (lastCollated) {
+        const existingCollatedFrom = lastCollated.collatedFrom
+        const lastOriginal = existingCollatedFrom
+          ? existingCollatedFrom[existingCollatedFrom.length - 1]
           : lastCollated
 
         if (canCollate(current, lastOriginal)) {
-          // Collate: combine texts with newline separator
-          const existingText = lastCollated.text ?? ''
-          const currentText = current.text ?? ''
-
-          const collatedFrom = lastCollated.collatedFrom
-            ? [...lastCollated.collatedFrom, current]
+          // Collate: create new object with combined text (avoid mutating existing)
+          const collatedFrom = existingCollatedFrom
+            ? [...existingCollatedFrom, current]
             : [lastOriginal, current]
 
-          // Update the last message with combined text (joined by newline)
-          result[result.length - 1] = {
+          result[lastIndex] = {
             ...lastCollated,
-            text: existingText + '\n' + currentText,
+            text: (lastCollated.text ?? '') + '\n' + (current.text ?? ''),
             collatedFrom,
           }
           continue
         }
       }
 
-      // Can't collate, add as new message
-      result.push(current as CollatedMessage)
+      // Can't collate, add as new message (shallow copy to avoid mutating original)
+      result.push({ ...current })
     }
 
     return result

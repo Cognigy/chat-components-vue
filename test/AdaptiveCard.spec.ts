@@ -1,13 +1,46 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
 import AdaptiveCard from '../src/components/messages/AdaptiveCard.vue'
+import AdaptiveCardRenderer from '../src/components/messages/AdaptiveCardRenderer.vue'
 import { MessageContextKey } from '../src/composables/useMessageContext'
 import type { IMessage } from '../src/types'
+
+// Define mock functions at module scope so they can be directly asserted
+const mockParse = vi.fn()
+const mockRender = vi.fn(() => {
+  const div = document.createElement('div')
+  div.className = 'ac-adaptiveCard'
+  div.innerHTML = '<span class="ac-textRun">Rendered Card</span>'
+  return div
+})
+
+// Mock the adaptivecards library
+vi.mock('adaptivecards', () => {
+  class MockAdaptiveCard {
+    hostConfig: any = null
+    parse = mockParse
+    render = mockRender
+  }
+
+  class MockHostConfig {
+    constructor(config: any) {
+      Object.assign(this, config)
+    }
+  }
+
+  return {
+    AdaptiveCard: MockAdaptiveCard,
+    HostConfig: MockHostConfig,
+  }
+})
 
 describe('AdaptiveCard', () => {
   let wrapper: VueWrapper
 
-  const createAdaptiveCardMessage = (payload: any, location: 'webchat' | 'defaultPreview' | 'plugin' = 'webchat'): IMessage => {
+  const createAdaptiveCardMessage = (
+      payload: any,
+      location: 'webchat' | 'defaultPreview' | 'plugin' = 'webchat'
+  ): IMessage => {
     const message: IMessage = {
       text: '',
       source: 'bot',
@@ -132,291 +165,63 @@ describe('AdaptiveCard', () => {
       const card = wrapper.find('[data-testid="adaptive-card-message"]')
       expect(card.exists()).toBe(false)
     })
-  })
 
-  describe('Card Title', () => {
-    it('extracts title from payload.title', () => {
+    it('renders AdaptiveCardRenderer component', () => {
       const payload = {
         type: 'AdaptiveCard',
-        title: 'Card Title',
-        body: [],
+        body: [{ type: 'TextBlock', text: 'Test' }],
       }
       const message = createAdaptiveCardMessage(payload)
       wrapper = mountAdaptiveCard(message)
 
-      expect(wrapper.text()).toContain('Card Title')
+      const renderer = wrapper.findComponent(AdaptiveCardRenderer)
+      expect(renderer.exists()).toBe(true)
     })
 
-    it('extracts title from large TextBlock', () => {
+    it('passes payload to AdaptiveCardRenderer', () => {
       const payload = {
         type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'TextBlock',
-            text: 'Large Heading',
-            size: 'large',
-          },
-          {
-            type: 'TextBlock',
-            text: 'Body text',
-          },
-        ],
+        body: [{ type: 'TextBlock', text: 'Test' }],
       }
       const message = createAdaptiveCardMessage(payload)
       wrapper = mountAdaptiveCard(message)
 
-      expect(wrapper.text()).toContain('Large Heading')
+      const renderer = wrapper.findComponent(AdaptiveCardRenderer)
+      expect(renderer.props('payload')).toEqual(payload)
     })
 
-    it('extracts title from first TextBlock when no size specified', () => {
+    it('passes hostConfig to AdaptiveCardRenderer', () => {
       const payload = {
         type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'TextBlock',
-            text: 'First Text',
-          },
-          {
-            type: 'TextBlock',
-            text: 'Second Text',
-          },
-        ],
+        body: [{ type: 'TextBlock', text: 'Test' }],
       }
       const message = createAdaptiveCardMessage(payload)
       wrapper = mountAdaptiveCard(message)
 
-      expect(wrapper.text()).toContain('First Text')
-    })
-
-    it('uses speak text as fallback title', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        speak: 'This is the speak text for screen readers',
-        body: [],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      expect(wrapper.text()).toContain('This is the speak text')
-    })
-
-    it('uses generic title when no title found', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        body: [],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      expect(wrapper.text()).toContain('Adaptive Card')
-    })
-  })
-
-  describe('Card Body', () => {
-    it('displays body text from TextBlocks', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'TextBlock',
-            text: 'Title',
-            size: 'large',
-          },
-          {
-            type: 'TextBlock',
-            text: 'This is the body text',
-          },
-        ],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      expect(wrapper.text()).toContain('This is the body text')
-    })
-
-    it('combines multiple body TextBlocks', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'TextBlock',
-            text: 'Title',
-            size: 'large',
-          },
-          {
-            type: 'TextBlock',
-            text: 'First paragraph',
-          },
-          {
-            type: 'TextBlock',
-            text: 'Second paragraph',
-          },
-        ],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      const text = wrapper.text()
-      expect(text).toContain('First paragraph')
-      expect(text).toContain('Second paragraph')
-    })
-
-    it('limits body text to first 2 blocks', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'TextBlock',
-            text: 'Block 1',
-          },
-          {
-            type: 'TextBlock',
-            text: 'Block 2',
-          },
-          {
-            type: 'TextBlock',
-            text: 'Block 3',
-          },
-          {
-            type: 'TextBlock',
-            text: 'Block 4',
-          },
-        ],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      const text = wrapper.text()
-      expect(text).toContain('Block 1')
-      expect(text).toContain('Block 2')
-      // Block 3 and 4 might or might not appear depending on title extraction
-    })
-
-    it('does not display body when no body text available', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        title: 'Only Title',
-        body: [],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      const bodyElements = wrapper.findAll('div').filter(el =>
-        el.text() !== 'Only Title' &&
-        el.text() !== '' &&
-        !el.text().includes('action')
-      )
-      // Should only have title, no separate body
-      expect(bodyElements.length).toBeLessThan(3)
-    })
-  })
-
-  describe('Actions', () => {
-    it('displays actions count when actions exist', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'TextBlock',
-            text: 'Card with actions',
-          },
-        ],
-        actions: [
-          {
-            type: 'Action.Submit',
-            title: 'Submit',
-          },
-          {
-            type: 'Action.OpenUrl',
-            title: 'Open URL',
-            url: 'https://example.com',
-          },
-        ],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      expect(wrapper.text()).toContain('2 actions available')
-    })
-
-    it('displays singular for single action', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'TextBlock',
-            text: 'Card with one action',
-          },
-        ],
-        actions: [
-          {
-            type: 'Action.Submit',
-            title: 'Submit',
-          },
-        ],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      expect(wrapper.text()).toContain('1 action available')
-    })
-
-    it('does not display actions when no actions', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'TextBlock',
-            text: 'Simple card',
-          },
-        ],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      expect(wrapper.text()).not.toContain('action available')
-    })
-
-    it('does not display actions when empty array', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'TextBlock',
-            text: 'Empty array card',
-          },
-        ],
-        actions: [],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      expect(wrapper.text()).not.toContain('action available')
+      const renderer = wrapper.findComponent(AdaptiveCardRenderer)
+      expect(renderer.props('hostConfig')).toBeDefined()
+      expect(renderer.props('hostConfig')).toHaveProperty('fontFamily', 'inherit')
     })
   })
 
   describe('Payload Priority', () => {
     it('prefers webchat over defaultPreview when defaultPreview disabled', () => {
+      const webchatPayload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Webchat' }],
+      }
+      const previewPayload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Preview' }],
+      }
       const message: IMessage = {
         text: '',
         source: 'bot',
         timestamp: '1673456789000',
         data: {
           _cognigy: {
-            _webchat: {
-              adaptiveCard: {
-                type: 'AdaptiveCard',
-                title: 'Webchat Card',
-                body: [],
-              },
-            },
-            _defaultPreview: {
-              adaptiveCard: {
-                type: 'AdaptiveCard',
-                title: 'Preview Card',
-                body: [],
-              },
-            },
+            _webchat: { adaptiveCard: webchatPayload },
+            _defaultPreview: { adaptiveCard: previewPayload },
           },
         },
       }
@@ -428,31 +233,27 @@ describe('AdaptiveCard', () => {
         },
       })
 
-      expect(wrapper.text()).toContain('Webchat Card')
-      expect(wrapper.text()).not.toContain('Preview Card')
+      const renderer = wrapper.findComponent(AdaptiveCardRenderer)
+      expect(renderer.props('payload')).toEqual(webchatPayload)
     })
 
     it('prefers defaultPreview when enabled', () => {
+      const webchatPayload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Webchat' }],
+      }
+      const previewPayload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Preview' }],
+      }
       const message: IMessage = {
         text: '',
         source: 'bot',
         timestamp: '1673456789000',
         data: {
           _cognigy: {
-            _webchat: {
-              adaptiveCard: {
-                type: 'AdaptiveCard',
-                title: 'Webchat Card',
-                body: [],
-              },
-            },
-            _defaultPreview: {
-              adaptiveCard: {
-                type: 'AdaptiveCard',
-                title: 'Preview Card',
-                body: [],
-              },
-            },
+            _webchat: { adaptiveCard: webchatPayload },
+            _defaultPreview: { adaptiveCard: previewPayload },
           },
         },
       }
@@ -464,28 +265,54 @@ describe('AdaptiveCard', () => {
         },
       })
 
-      expect(wrapper.text()).toContain('Preview Card')
-      expect(wrapper.text()).not.toContain('Webchat Card')
+      const renderer = wrapper.findComponent(AdaptiveCardRenderer)
+      expect(renderer.props('payload')).toEqual(previewPayload)
     })
 
     it('falls back to plugin when webchat not available', () => {
+      const pluginPayload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Plugin' }],
+      }
       const message: IMessage = {
         text: '',
         source: 'bot',
         timestamp: '1673456789000',
         data: {
-          _plugin: {
-            payload: {
-              type: 'AdaptiveCard',
-              title: 'Plugin Card',
-              body: [],
-            },
-          },
+          _plugin: { payload: pluginPayload },
         },
       }
       wrapper = mountAdaptiveCard(message)
 
-      expect(wrapper.text()).toContain('Plugin Card')
+      const renderer = wrapper.findComponent(AdaptiveCardRenderer)
+      expect(renderer.props('payload')).toEqual(pluginPayload)
+    })
+
+    it('prefers plugin over webchat when both exist (matches React behavior)', () => {
+      const webchatPayload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Webchat' }],
+      }
+      const pluginPayload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Plugin' }],
+      }
+      const message: IMessage = {
+        text: '',
+        source: 'bot',
+        timestamp: '1673456789000',
+        data: {
+          _cognigy: {
+            _webchat: { adaptiveCard: webchatPayload },
+          },
+          _plugin: { payload: pluginPayload },
+        },
+      }
+      wrapper = mountAdaptiveCard(message)
+
+      const renderer = wrapper.findComponent(AdaptiveCardRenderer)
+      // Plugin takes priority over webchat (matches React: return _plugin || _webchat)
+      expect(renderer.props('payload')).toEqual(pluginPayload)
     })
   })
 
@@ -493,12 +320,7 @@ describe('AdaptiveCard', () => {
     it('uses ChatBubble wrapper', () => {
       const payload = {
         type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'TextBlock',
-            text: 'Test',
-          },
-        ],
+        body: [{ type: 'TextBlock', text: 'Test' }],
       }
       const message = createAdaptiveCardMessage(payload)
       wrapper = mountAdaptiveCard(message)
@@ -506,35 +328,10 @@ describe('AdaptiveCard', () => {
       const chatBubble = wrapper.findComponent({ name: 'ChatBubble' })
       expect(chatBubble.exists()).toBe(true)
     })
-
-    it('uses Typography for title', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        title: 'Card Title',
-        body: [],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      const typography = wrapper.findAllComponents({ name: 'Typography' })
-      expect(typography.length).toBeGreaterThan(0)
-    })
-
-    it('renders card icon', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        body: [],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      const svg = wrapper.find('svg')
-      expect(svg.exists()).toBe(true)
-    })
   })
 
   describe('CSS Classes', () => {
-    it('applies correct global CSS classes', () => {
+    it('applies adaptivecard-wrapper class', () => {
       const payload = {
         type: 'AdaptiveCard',
         body: [],
@@ -544,50 +341,89 @@ describe('AdaptiveCard', () => {
 
       const card = wrapper.find('.adaptivecard-wrapper')
       expect(card.exists()).toBe(true)
+    })
+
+    it('applies internal class', () => {
+      const payload = {
+        type: 'AdaptiveCard',
+        body: [],
+      }
+      const message = createAdaptiveCardMessage(payload)
+      wrapper = mountAdaptiveCard(message)
 
       const internal = wrapper.find('.internal')
       expect(internal.exists()).toBe(true)
     })
   })
 
+  describe('Host Configuration', () => {
+    it('passes font configuration', () => {
+      const payload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Test' }],
+      }
+      const message = createAdaptiveCardMessage(payload)
+      wrapper = mountAdaptiveCard(message)
+
+      const renderer = wrapper.findComponent(AdaptiveCardRenderer)
+      const hostConfig = renderer.props('hostConfig')
+
+      expect(hostConfig.fontSizes).toEqual({
+        small: 10,
+        default: 14,
+        medium: 16,
+        large: 18,
+        extraLarge: 34,
+      })
+    })
+
+    it('passes font weights configuration', () => {
+      const payload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Test' }],
+      }
+      const message = createAdaptiveCardMessage(payload)
+      wrapper = mountAdaptiveCard(message)
+
+      const renderer = wrapper.findComponent(AdaptiveCardRenderer)
+      const hostConfig = renderer.props('hostConfig')
+
+      expect(hostConfig.fontWeights).toEqual({
+        lighter: 300,
+        default: 400,
+        bolder: 600,
+      })
+    })
+
+    it('passes line heights configuration', () => {
+      const payload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Test' }],
+      }
+      const message = createAdaptiveCardMessage(payload)
+      wrapper = mountAdaptiveCard(message)
+
+      const renderer = wrapper.findComponent(AdaptiveCardRenderer)
+      const hostConfig = renderer.props('hostConfig')
+
+      expect(hostConfig.lineHeights).toEqual({
+        small: 12,
+        default: 18.2,
+        medium: 22.4,
+        large: 23.4,
+        extraLarge: 40.8,
+      })
+    })
+  })
+
   describe('Edge Cases', () => {
-    it('handles missing body array', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        title: 'Card without body',
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      expect(wrapper.text()).toContain('Card without body')
-    })
-
-    it('handles body with non-TextBlock elements', () => {
-      const payload = {
-        type: 'AdaptiveCard',
-        body: [
-          {
-            type: 'Image',
-            url: 'https://example.com/image.jpg',
-          },
-          {
-            type: 'TextBlock',
-            text: 'Text after image',
-          },
-        ],
-      }
-      const message = createAdaptiveCardMessage(payload)
-      wrapper = mountAdaptiveCard(message)
-
-      expect(wrapper.text()).toContain('Text after image')
-    })
-
     it('handles empty payload', () => {
       const payload = {}
       const message = createAdaptiveCardMessage(payload)
       wrapper = mountAdaptiveCard(message)
 
-      expect(wrapper.text()).toContain('Adaptive Card')
+      const card = wrapper.find('[data-testid="adaptive-card-message"]')
+      expect(card.exists()).toBe(true)
     })
 
     it('handles null body', () => {
@@ -600,6 +436,172 @@ describe('AdaptiveCard', () => {
 
       const card = wrapper.find('[data-testid="adaptive-card-message"]')
       expect(card.exists()).toBe(true)
+    })
+
+    it('handles undefined _cognigy gracefully', () => {
+      const message: IMessage = {
+        text: '',
+        source: 'bot',
+        timestamp: '1673456789000',
+        data: {
+          _cognigy: undefined,
+        },
+      }
+      wrapper = mountAdaptiveCard(message)
+
+      const card = wrapper.find('[data-testid="adaptive-card-message"]')
+      expect(card.exists()).toBe(false)
+    })
+
+    it('handles missing data gracefully', () => {
+      const message: IMessage = {
+        text: '',
+        source: 'bot',
+        timestamp: '1673456789000',
+        data: undefined as any,
+      }
+      wrapper = mountAdaptiveCard(message)
+
+      const card = wrapper.find('[data-testid="adaptive-card-message"]')
+      expect(card.exists()).toBe(false)
+    })
+  })
+})
+
+describe('AdaptiveCardRenderer', () => {
+  let wrapper: VueWrapper
+
+  const mountRenderer = (payload: any, hostConfig?: any, config = {}) => {
+    return mount(AdaptiveCardRenderer, {
+      props: {
+        payload,
+        hostConfig,
+      },
+      global: {
+        provide: {
+          [MessageContextKey as symbol]: {
+            message: { text: '', source: 'bot', timestamp: '123', data: {} },
+            config,
+            action: vi.fn(),
+            onEmitAnalytics: vi.fn(),
+          },
+        },
+      },
+    })
+  }
+
+  beforeEach(() => {
+    mockParse.mockClear()
+    mockRender.mockClear()
+  })
+
+  afterEach(() => {
+    wrapper?.unmount()
+  })
+
+  describe('Rendering', () => {
+    it('renders the target div', () => {
+      const payload = { type: 'AdaptiveCard', body: [] }
+      wrapper = mountRenderer(payload)
+
+      const target = wrapper.find('[data-testid="adaptive-card-renderer"]')
+      expect(target.exists()).toBe(true)
+    })
+
+    it('calls adaptivecards parse with payload', () => {
+      const payload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Test' }],
+      }
+      wrapper = mountRenderer(payload)
+
+      expect(mockParse).toHaveBeenCalledWith(payload)
+    })
+
+    it('calls adaptivecards render', () => {
+      const payload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Test' }],
+      }
+      wrapper = mountRenderer(payload)
+
+      expect(mockRender).toHaveBeenCalled()
+    })
+  })
+
+  describe('Props', () => {
+    it('accepts payload prop', () => {
+      const payload = {
+        type: 'AdaptiveCard',
+        body: [{ type: 'TextBlock', text: 'Test' }],
+      }
+      wrapper = mountRenderer(payload)
+
+      expect(wrapper.props('payload')).toEqual(payload)
+    })
+
+    it('accepts hostConfig prop', () => {
+      const payload = { type: 'AdaptiveCard', body: [] }
+      const hostConfig = { fontFamily: 'Arial' }
+      wrapper = mountRenderer(payload, hostConfig)
+
+      expect(wrapper.props('hostConfig')).toEqual(hostConfig)
+    })
+
+    it('handles undefined payload', () => {
+      wrapper = mountRenderer(undefined)
+
+      const target = wrapper.find('[data-testid="adaptive-card-renderer"]')
+      expect(target.exists()).toBe(true)
+    })
+  })
+
+  describe('Edge Cases', () => {
+    it('handles empty payload object', () => {
+      wrapper = mountRenderer({})
+
+      const target = wrapper.find('[data-testid="adaptive-card-renderer"]')
+      expect(target.exists()).toBe(true)
+    })
+
+    it('handles complex card payload', () => {
+      const complexPayload = {
+        type: 'AdaptiveCard',
+        version: '1.5',
+        body: [
+          {
+            type: 'Container',
+            items: [
+              { type: 'TextBlock', text: 'Header', weight: 'bolder' },
+              { type: 'TextBlock', text: 'Subtitle', isSubtle: true },
+            ],
+          },
+          {
+            type: 'ColumnSet',
+            columns: [
+              {
+                type: 'Column',
+                width: 'auto',
+                items: [{ type: 'Image', url: 'https://example.com/img.png' }],
+              },
+              {
+                type: 'Column',
+                width: 'stretch',
+                items: [{ type: 'TextBlock', text: 'Description' }],
+              },
+            ],
+          },
+        ],
+        actions: [
+          { type: 'Action.Submit', title: 'Submit' },
+          { type: 'Action.OpenUrl', title: 'Learn More', url: 'https://example.com' },
+        ],
+      }
+
+      wrapper = mountRenderer(complexPayload)
+
+      const target = wrapper.find('[data-testid="adaptive-card-renderer"]')
+      expect(target.exists()).toBe(true)
     })
   })
 })

@@ -49,6 +49,12 @@ export function configColorsToCssVariables(
 
     // Link color
     '--cc-text-link-color': colors.textLinkColor,
+
+    // Adaptive Card colors
+    '--cc-adaptive-card-text-color': colors.adaptiveCardTextColor,
+    '--cc-adaptive-card-input-color': colors.adaptiveCardInputColor,
+    '--cc-adaptive-card-input-background': colors.adaptiveCardInputBackground,
+    '--cc-adaptive-card-input-border': colors.adaptiveCardInputBorder,
   }
 
   // Filter out undefined values and return only defined CSS variables

@@ -11,6 +11,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., v0.1.0) - must already exist'
+        required: true
+        type: string
 
 jobs:
   publish:
@@ -27,6 +33,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-depth: 0
 
       # ----------------------------------------------------------------------
@@ -44,14 +51,22 @@ jobs:
       - name: Get version info
         id: version
         run: |
+          # Get tag from input or git ref
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+
           # Extract version from tag (v0.2.0 -> 0.2.0)
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          TAG_VERSION="${TAG#v}"
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
 
           echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
           echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
-          echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
+          echo "Tag: $TAG"
           echo "Tag version: $TAG_VERSION"
           echo "Package version: $PACKAGE_VERSION"
 
@@ -78,7 +93,7 @@ jobs:
       - name: Generate release notes
         id: release-notes
         run: |
-          TAG="${{ github.ref_name }}"
+          TAG="${{ steps.version.outputs.tag }}"
           VERSION="${{ steps.version.outputs.tag_version }}"
 
           # Find previous tag
@@ -120,7 +135,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ github.ref_name }}"
+          TAG="${{ steps.version.outputs.tag }}"
 
           gh release create "$TAG" \
             --title "$TAG" \
@@ -142,7 +157,7 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          TAG="${{ github.ref_name }}"
+          TAG="${{ steps.version.outputs.tag }}"
           VERSION="${{ steps.version.outputs.tag_version }}"
 
           echo "# Release Published" >> $GITHUB_STEP_SUMMARY
