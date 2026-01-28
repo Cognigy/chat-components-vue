@@ -59,7 +59,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
-          ref: main  # Always use main as source, even when triggered from other branches
+          ref: ${{ github.event.repository.default_branch }}  # Always use default branch as source, even when triggered from other branches
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
