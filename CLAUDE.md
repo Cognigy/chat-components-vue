@@ -523,7 +523,7 @@ When writing or modifying code in this repository, follow these principles:
 - Keep things DRY except in tests
 
 ### TypeScript specific guidelines
-- use interface for contracts (easier combin)
+- use interface for contracts (easier combining)
 - use type for data structures
 - do not use any, unknown, never, or as type assertion with one exception: when an object shape or parts of it are unknown or can have various shapes or additional volatile properties like metadata.
 - define explicit types and contracts.
