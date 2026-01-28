@@ -29,6 +29,7 @@ import ChatBubble from '../common/ChatBubble.vue'
 import AdaptiveCardRenderer from './AdaptiveCardRenderer.vue'
 import { useMessageContext } from '../../composables/useMessageContext'
 import type { HostConfig } from 'adaptivecards'
+import type { IMessageDataExtended } from '../../types'
 
 const styles = useCssModule()
 const { message, config } = useMessageContext()
@@ -77,12 +78,20 @@ const adaptiveCardsHostConfig: Partial<HostConfig> = {
 }
 
 /**
+ * Type-safe access to extended message data
+ */
+const messageData = computed<IMessageDataExtended | undefined>(() => {
+  return message?.data as IMessageDataExtended | undefined
+})
+
+/**
  * Check if this message has an adaptive card payload
  */
 const hasAdaptiveCard = computed(() => {
-  const webchat = (message?.data?._cognigy?._webchat as any)?.adaptiveCard
-  const defaultPreview = (message?.data?._cognigy?._defaultPreview as any)?.adaptiveCard
-  const plugin = (message?.data?._plugin as any)?.payload
+  const data = messageData.value
+  const webchat = data?._cognigy?._webchat?.adaptiveCard
+  const defaultPreview = data?._cognigy?._defaultPreview?.adaptiveCard
+  const plugin = data?._plugin?.payload
 
   return !!(webchat || defaultPreview || plugin)
 })
@@ -92,9 +101,10 @@ const hasAdaptiveCard = computed(() => {
  * Follows the same priority logic as the React version
  */
 const cardPayload = computed(() => {
-  const webchat = (message?.data?._cognigy?._webchat as any)?.adaptiveCard
-  const defaultPreview = (message?.data?._cognigy?._defaultPreview as any)?.adaptiveCard
-  const plugin = (message?.data?._plugin as any)?.payload
+  const data = messageData.value
+  const webchat = data?._cognigy?._webchat?.adaptiveCard
+  const defaultPreview = data?._cognigy?._defaultPreview?.adaptiveCard
+  const plugin = data?._plugin?.payload
   const defaultPreviewEnabled = config?.settings?.widgetSettings?.enableDefaultPreview
 
   // Priority: webchat over defaultPreview (unless defaultPreview is enabled)
@@ -122,27 +132,22 @@ const wrapperClasses = computed(() => [
  * Checks multiple locations where Cognigy might store the submitted data
  */
 const submittedData = computed<Record<string, unknown> | undefined>(() => {
-  const webchatData = message?.data?._cognigy?._webchat as Record<string, unknown> | undefined
-  // Cast message.data to allow dynamic property access
-  const messageData = message?.data as Record<string, unknown> | undefined
-
-  // Extract request.value if present (common Cognigy pattern for adaptive card submissions)
-  const requestData = messageData?.request as Record<string, unknown> | undefined
-  const requestValue = requestData?.value as Record<string, unknown> | undefined
+  const data = messageData.value
+  const webchatData = data?._cognigy?._webchat
 
   // Check various locations where submitted data might be stored
   // Priority: request.value > adaptiveCardData > data > formData
-  const data =
-    requestValue ||
+  const submittedValue =
+    data?.request?.value ||
     webchatData?.adaptiveCardData ||
     webchatData?.data ||
     webchatData?.formData ||
-    messageData?.adaptiveCardData ||
-    messageData?.data ||
-    messageData?.formData
+    data?.adaptiveCardData ||
+    data?.data ||
+    data?.formData
 
-  if (data && typeof data === 'object' && !Array.isArray(data)) {
-    return data as Record<string, unknown>
+  if (submittedValue && typeof submittedValue === 'object' && !Array.isArray(submittedValue)) {
+    return submittedValue
   }
 
   return undefined
@@ -150,13 +155,24 @@ const submittedData = computed<Record<string, unknown> | undefined>(() => {
 
 /**
  * Determine if the card should be rendered in readonly mode
- * For chat history rendering, cards are always readonly (presentation-only)
- * This disables all inputs and buttons to prevent interaction with past messages
+ *
+ * Logic:
+ * - If config.settings.behavior.adaptiveCardsReadonly is true → always readonly
+ * - If config.settings.behavior.adaptiveCardsReadonly is false/undefined → smart default:
+ *   - Readonly if submitted data exists (card was already submitted)
+ *   - Interactive if no submitted data (card awaiting user input)
  */
 const isReadonly = computed(() => {
-  // Default to readonly for chat history rendering
-  // Could be made configurable via config.settings if needed
-  return true
+  const configReadonly = config?.settings?.behavior?.adaptiveCardsReadonly
+
+  // Config override: force readonly mode for presentation-only use cases
+  if (configReadonly === true) {
+    return true
+  }
+
+  // Smart default: readonly if card has submitted data (it's history)
+  // Interactive if no submitted data (awaiting user input)
+  return submittedData.value !== undefined
 })
 </script>
 

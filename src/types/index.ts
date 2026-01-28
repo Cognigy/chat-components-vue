@@ -133,6 +133,16 @@ export interface ChatSettings {
     messageDelay?: number
     collateStreamedOutputs?: boolean
     focusInputAfterPostback?: boolean
+    /**
+     * Controls adaptive card interactivity.
+     * - `true`: All cards are readonly (presentation only), regardless of submitted data
+     * - `false`: Cards are interactive unless they have submitted data (smart default)
+     * - `undefined`: Same as `false` (smart default)
+     *
+     * Use `true` for chat history/transcript displays where no interaction is needed.
+     * Use `false` for interactive chat interfaces where users can submit card data.
+     */
+    adaptiveCardsReadonly?: boolean
   }
   widgetSettings?: {
     enableDefaultPreview?: boolean
@@ -375,5 +385,44 @@ export interface IWebchatChannelPayload {
     quick_replies?: QuickReply[]
     attachment?: TemplateAttachment | AudioAttachment | ImageAttachment | VideoAttachment
   }
-  adaptiveCard?: unknown
+  adaptiveCard?: Record<string, unknown>
+  /** Submitted adaptive card data */
+  adaptiveCardData?: Record<string, unknown>
+  data?: Record<string, unknown>
+  formData?: Record<string, unknown>
+}
+
+/**
+ * Cognigy message data structure
+ * Shape of message.data._cognigy
+ */
+export interface ICognigyData {
+  _webchat?: IWebchatChannelPayload
+  _defaultPreview?: IWebchatChannelPayload
+  _facebook?: IWebchatChannelPayload
+}
+
+/**
+ * Plugin payload structure for custom message types
+ */
+export interface IPluginPayload {
+  type?: string
+  payload?: Record<string, unknown>
+}
+
+/**
+ * Extended message data with Cognigy-specific fields
+ * Use this when accessing message.data with Cognigy payload structures
+ */
+export interface IMessageDataExtended {
+  _cognigy?: ICognigyData
+  _plugin?: IPluginPayload
+  /** Adaptive card submission request data */
+  request?: {
+    value?: Record<string, unknown>
+  }
+  /** Direct adaptive card data fields (fallback locations) */
+  adaptiveCardData?: Record<string, unknown>
+  data?: Record<string, unknown>
+  formData?: Record<string, unknown>
 }

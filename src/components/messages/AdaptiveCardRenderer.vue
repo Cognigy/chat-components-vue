@@ -13,10 +13,49 @@
  * Inspired by Microsoft's adaptivecards-react package:
  * https://github.com/microsoft/AdaptiveCards/blob/5b66a52e0e0cee5074a42dcbe688d608e0327ae4/source/nodejs/adaptivecards-react/src/adaptive-card.tsx
  */
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue'
 import { AdaptiveCard as MSAdaptiveCard, HostConfig } from 'adaptivecards'
 import MarkdownIt from 'markdown-it'
-import { useSanitize } from '../../composables/useSanitize'
+import { sanitizeHTMLWithConfig } from '../../utils/sanitize'
+
+/**
+ * Shared MarkdownIt instance at module scope.
+ *
+ * Why this is safe to share across component instances:
+ * - MarkdownIt's render() method is a pure function (input → output, no side effects)
+ * - No internal state is mutated during rendering
+ * - Configuration is set at construction time and doesn't change
+ * - This pattern is recommended by MarkdownIt documentation for performance
+ *
+ * Creating a new instance per component would be wasteful since there's no
+ * per-instance state to isolate.
+ */
+const md = new MarkdownIt()
+
+/**
+ * Set up Markdown processing for Adaptive Cards (module-level, runs once)
+ *
+ * This sets a static callback on MSAdaptiveCard that processes markdown text.
+ * We intentionally do this at module scope to:
+ * 1. Avoid race conditions from multiple components setting the callback
+ * 2. Ensure consistent markdown processing across all card instances
+ *
+ * Note: We use sanitizeHTML directly (not via useSanitize composable) because
+ * this runs at module scope without component context. For adaptive cards,
+ * sanitization is always applied for security - config overrides don't apply.
+ */
+MSAdaptiveCard.onProcessMarkdown = (text, result) => {
+  try {
+    const html = md.render(text)
+    // Use default sanitization (no custom allowed tags for adaptive card content)
+    result.outputHtml = sanitizeHTMLWithConfig(html)
+    result.didProcess = true
+  } catch (error) {
+    console.error('AdaptiveCardRenderer: Markdown processing failed', { error })
+    result.outputHtml = text
+    result.didProcess = true
+  }
+}
 
 interface Props {
   /**
@@ -46,33 +85,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const targetRef = ref<HTMLDivElement | null>(null)
 
-// Singleton markdown instance (following adaptivecards documentation pattern)
-const md = new MarkdownIt()
-
-// Card instance ref - we reuse the same instance
-let cardInstance: MSAdaptiveCard | null = null
-
-// Get sanitization from context
-const { processHTML } = useSanitize()
-
-/**
- * Set up Markdown processing for Adaptive Cards
- * Uses markdown-it + DOMPurify sanitization
- */
-function setupMarkdownProcessing(): void {
-  MSAdaptiveCard.onProcessMarkdown = (text, result) => {
-    try {
-      const html = md.render(text)
-      const sanitizedHtml = processHTML(html)
-      result.outputHtml = sanitizedHtml
-      result.didProcess = true
-    } catch (error) {
-      console.error('AdaptiveCardRenderer: Markdown processing failed', { error })
-      result.outputHtml = text
-      result.didProcess = true
-    }
-  }
-}
+// Component-scoped card instance - using shallowRef for proper instance isolation
+// Each component gets its own MSAdaptiveCard instance to prevent conflicts
+const cardInstance = shallowRef<MSAdaptiveCard | null>(null)
 
 /**
  * Apply input data to card payload by setting values on input elements
@@ -164,13 +179,13 @@ function renderCard(): void {
   }
 
   // Create card instance if needed
-  if (!cardInstance) {
-    cardInstance = new MSAdaptiveCard()
+  if (!cardInstance.value) {
+    cardInstance.value = new MSAdaptiveCard()
   }
 
   // Apply host config if provided
   if (props.hostConfig) {
-    cardInstance.hostConfig = new HostConfig(props.hostConfig)
+    cardInstance.value.hostConfig = new HostConfig(props.hostConfig)
   }
 
   try {
@@ -180,8 +195,8 @@ function renderCard(): void {
       : props.payload
 
     // Parse and render the card
-    cardInstance.parse(payloadToRender)
-    const renderedCard = cardInstance.render()
+    cardInstance.value.parse(payloadToRender)
+    const renderedCard = cardInstance.value.render()
 
     if (renderedCard && targetRef.value) {
       // Clear previous content and append new
@@ -209,9 +224,8 @@ function renderCard(): void {
   }
 }
 
-// Set up markdown processing on mount
+// Render on mount (markdown processing is set up at module scope)
 onMounted(() => {
-  setupMarkdownProcessing()
   renderCard()
 })
 
@@ -226,6 +240,6 @@ watch(
 
 // Cleanup on unmount
 onBeforeUnmount(() => {
-  cardInstance = null
+  cardInstance.value = null
 })
 </script>
