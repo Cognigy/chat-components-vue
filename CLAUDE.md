@@ -525,7 +525,7 @@ When writing or modifying code in this repository, follow these principles:
 ### TypeScript specific guidelines
 - use interface for contracts (easier combining)
 - use type for data structures
-- do not use any, unknown, never, or as type assertion with one exception: when an object shape or parts of it are unknown or can have various shapes or additional volatile properties like metadata.
+- avoid using `any`, `unknown`, `never`, or `as` type assertions in new code where a proper type can be defined; when dealing with genuinely dynamic or external data or library gaps, follow the "TypeScript Typing Philosophy" section below (controlled use with comments and optional chaining).
 - define explicit types and contracts.
 - use optional chaining and nullish coalescing
 - do not build try-catch blocks that directly catch errors thrown in the try block. If something goes wrong, log it where it happens. This only adds complexity and TypeScript disregards this practice anyway.
